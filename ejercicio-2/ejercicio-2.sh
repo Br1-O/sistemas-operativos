@@ -2,6 +2,7 @@
 
 declare -r -i MAX=50
 declare -A inventario
+declare -i inventory_length=0
 
 #▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ My Functions ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
 
@@ -14,8 +15,22 @@ es_id_valido() {
     fi
     
     return 0
+}
 
+update_array_length_variable_by_ref(){
+    local -n inventory_ref=$1
+    local -n inventory_length_ref=$2
+    local -i new_inventory_length=0
 
+    for((i=0; i<MAX ;i++)); do
+
+        if [[ -n "${inventory_ref[$i,id]}" ]]; then
+            ((new_inventory_length++))
+        fi
+
+    done
+
+    inventory_length_ref="${new_inventory_length}"
 }
 
 #refactor para encapsular menu
@@ -26,7 +41,7 @@ show_menu(){
         printf "3. Modificación producto (ID 0 a %d)\n" $((MAX - 1))
         printf "4. Mostrar inventario\n"
         printf "5. Generar archivo html\n"
-        printf "6. Salvar \n"
+        printf "6. Buscar producto por nombre\n"
         printf "7. Salir\n"
 }
 
@@ -38,11 +53,13 @@ get_option_from_user_and_execute_action(){
     local -r -i OPCION_MODIFICAR=3
     local -r -i OPCION_MOSTRAR=4
     local -r -i OPCION_GENERAR_HTML=5
-    local -r -i OPCION_SALVAR_TSV=6
+    local -r -i OPCION_BUSCAR_PRODUCTO_POR_NOMBRE=6
     local -r -i OPCION_SALIR=7
 
     local -i opcion=0
-    local -n inventory_ref=$1
+    local -n inventory_g_ref=$1    
+    local -n inventory_length_g_ref=$2
+
 
     while [[ "$opcion" != "$OPCION_SALIR" ]]; do
         show_menu
@@ -53,28 +70,41 @@ get_option_from_user_and_execute_action(){
 
         case $opcion in
             $OPCION_ALTA)
-                read -rp "Ingrese ID (0-$((MAX - 1))): " id
                 read -rp "Ingrese Nombre: " nombre_temp
-                read -rp "Ingrese Categoria: " categoria_temp
-                read -rp "Ingrese Stock: " stock_temp
-                read -rp "Ingrese Costo de Compra (proveedor): " costo_temp
-                read -rp "Ingrese Precio de venta: " precio_temp
 
-                p_temp[id]="$id"
-                p_temp[nombre]="$nombre_temp"
-                p_temp[categoria]="$categoria_temp"
-                p_temp[stock]="$stock_temp"
-                p_temp[costo]="$costo_temp"
-                p_temp[precio]="$precio_temp"
-                p_temp[activo]=1
+                local -i is_repeated=0
+                p_temp=()
 
-                alta p_temp
+                search_products_by_name "${nombre_temp}" p_temp is_repeated
+
+                if(( ${is_repeated} > 0 )); then
+                    echo "¡El producto ya existe! No puede duplicar el nombre de productos."
+                else
+                    read -rp "Ingrese Categoria: " categoria_temp
+                    read -rp "Ingrese Stock: " stock_temp
+                    read -rp "Ingrese Costo de Compra (proveedor): " costo_temp
+                    read -rp "Ingrese Precio de venta: " precio_temp
+
+                    p_temp[id]="${inventory_length_g_ref}"
+                    p_temp[nombre]="$nombre_temp"
+                    p_temp[categoria]="$categoria_temp"
+                    p_temp[stock]="$stock_temp"
+                    p_temp[costo]="$costo_temp"
+                    p_temp[precio]="$precio_temp"
+                    p_temp[activo]=1
+
+                    alta p_temp
                 
-                save_data_to_tsv $1
+                    update_array_length_variable_by_ref inventory_g_ref inventory_length_g_ref
+
+                    save_data_to_tsv $1
+                fi
                 ;;
             $OPCION_BAJA)
                 read -rp "Ingrese ID a eliminar (0-$((MAX - 1))): " id
+
                 baja "$id"
+
                 save_data_to_tsv $1
                 ;;
             $OPCION_MODIFICAR)
@@ -102,8 +132,15 @@ get_option_from_user_and_execute_action(){
             $OPCION_GENERAR_HTML)
                 generate_html $1
                 ;;
-            $OPCION_SALVAR_TSV)
-                save_data_to_tsv $1
+            $OPCION_BUSCAR_PRODUCTO_POR_NOMBRE)
+                local -i products_found_length=0
+                local -A products_found=()                
+
+                read -rp "Ingrese Nombre: " nombre_temp
+
+                search_products_by_partial_name "$nombre_temp" products_found products_found_length
+
+                show_products_array products_found products_found_length
                 ;;
             $OPCION_SALIR)
                 printf "\nSaliendo del programa...\n"
@@ -115,6 +152,103 @@ get_option_from_user_and_execute_action(){
     done
 
     return 0
+}
+
+
+#▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ Product Function ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
+
+search_products_by_partial_name(){
+    local -r product_name=$1
+    local -n product_found_ref=$2
+    local -n quantity_of_products_found=$3
+
+    product_found_ref=()
+    quantity_of_products_found=0
+
+    shopt -s nocasematch
+
+    for ((i=0; i<MAX; i++)); do
+        if [[ -n "${inventario[$i,id]}" ]]; then
+            local nombre_prod="${inventario[$i,nombre]}"
+
+            if [[ "$nombre_prod" == *"${product_name}"* ]]; then
+
+                local id=$quantity_of_products_found
+
+                product_found_ref["$id,id"]="${inventario[$i,id]}"
+                product_found_ref["$id,nombre"]="${inventario[$i,nombre]}"
+                product_found_ref["$id,categoria"]="${inventario[$i,categoria]}"
+                product_found_ref["$id,stock"]="${inventario[$i,stock]}"
+                product_found_ref["$id,costo"]="${inventario[$i,costo]}"
+                product_found_ref["$id,precio"]="${inventario[$i,precio]}"
+                product_found_ref["$id,activo"]="${inventario[$i,activo]}"
+
+                ((quantity_of_products_found++))
+            fi
+        fi
+    done
+
+    shopt -u nocasematch
+}
+
+search_products_by_name(){
+    local -r product_name=$1
+    local -n product_found_ref=$2
+    local -n quantity_of_products_found=$3
+
+    product_found_ref=()
+    quantity_of_products_found=0
+
+    shopt -s nocasematch
+
+    for ((i=0; i<MAX; i++)); do
+        if [[ -n "${inventario[$i,id]}" ]]; then
+            local nombre_prod="${inventario[$i,nombre]}"
+
+            if [[ "$nombre_prod" == "${product_name}" ]]; then
+
+                local id=$quantity_of_products_found
+
+                product_found_ref["$id,id"]="${inventario[$i,id]}"
+                product_found_ref["$id,nombre"]="${inventario[$i,nombre]}"
+                product_found_ref["$id,categoria"]="${inventario[$i,categoria]}"
+                product_found_ref["$id,stock"]="${inventario[$i,stock]}"
+                product_found_ref["$id,costo"]="${inventario[$i,costo]}"
+                product_found_ref["$id,precio"]="${inventario[$i,precio]}"
+                product_found_ref["$id,activo"]="${inventario[$i,activo]}"
+
+                ((quantity_of_products_found++))
+            fi
+        fi
+    done
+
+    shopt -u nocasematch
+}
+
+show_products_array(){
+    local -n array_ref=$1
+    local -i array_length=$2
+
+    if((array_length>0)); then
+    
+        printf "%-5s %-15s %-15s %-8s %-10s %-10s %-8s\n" "ID" "NOMBRE" "CATEGORIA" "STOCK" "COSTO" "PRECIO" "ESTADO"
+        printf "%s\n" "------------------------------------------------------------------------"
+
+            for ((i=0; i<array_length; i++)); do
+                if [[ -n "${array_ref[$i,id]}" ]]; then
+                    printf "%-5s %-15s %-15s %-8s %-9s %-9s %-8s\n" \
+                        "${array_ref[$i,id]}" \
+                        "${array_ref[$i,nombre]}" \
+                        "${array_ref[$i,categoria]}" \
+                        "${array_ref[$i,stock]}" \
+                        "${array_ref[$i,costo]}" \
+                        "${array_ref[$i,precio]}"\
+                        "${array_ref[$i,activo]}"
+                fi
+            done
+    else 
+        printf "No se encontraron productos. \n"
+    fi
 }
 
 #▀▀▀▀▀▀▀▀ EOC printing functions for html template ▀▀▀▀▀▀▀▀#
@@ -301,8 +435,8 @@ load_data_into_array_from_tsv(){
     #read line per line with tabulation as the separator for 7 columns
     while IFS=$'\t' read -r id nombre categoria stock costo precio activo; do
 
-        #check if the first value if empty, if so, ignore
-        [[ -z "$id" ]] && continue;
+        #check if the first value if empty or not valid, if so, ignore
+        [[ -z "$id" || ! "$id" =~ ^[0-9]+$ ]] && continue
 
         #load values into the array via reference
         invent_ref["$id,id"]="$id"
@@ -323,7 +457,7 @@ save_data_to_tsv(){
     > datos_inventario.tsv
 
     for ((i=0; i<MAX; i++)); do
-        if [[ -n "${inventario[$i,id]}" ]]; then
+        if [[ -n "${invento_ref[$i,id]}" ]]; then
             printf "%d\t%s\t%s\t%s\t%s\t%s\t%s\n" \
                 "$i" \
                 "${invento_ref[$i,nombre]}" \
@@ -464,7 +598,9 @@ main() {
   
     load_data_into_array_from_tsv inventario
 
-    get_option_from_user_and_execute_action inventario
+    update_array_length_variable_by_ref inventario inventory_length
+
+    get_option_from_user_and_execute_action inventario inventory_length
 
     return 0
 }
