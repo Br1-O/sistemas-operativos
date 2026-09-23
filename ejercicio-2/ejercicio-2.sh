@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
 
-declare -r -i MAX=50
-declare -A inventario
-declare -i inventory_length=0
-
 #▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ My Functions ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
 
 #refactor para este bloque que vi repetido
@@ -35,14 +31,22 @@ update_array_length_variable_by_ref(){
 
 #refactor para encapsular menu
 show_menu(){
-    printf "\nACCIONES:\n"
-        printf "1. Alta producto (ID 0 a %d)\n" $((MAX - 1))
-        printf "2. Baja producto\n"
-        printf "3. Modificación producto (ID 0 a %d)\n" $((MAX - 1))
-        printf "4. Mostrar inventario\n"
-        printf "5. Generar archivo html\n"
-        printf "6. Buscar producto por nombre\n"
-        printf "7. Salir\n"
+    local c_bold="\033[1m"
+    local c_reset="\033[0m"
+
+    printf "\n"
+    printf "=============================================================\n"
+    printf "                    ${c_bold}MENÚ DE INVENTARIO${c_reset}\n"
+    printf "=============================================================\n"
+    printf " 1. Alta producto (ID 0 a %d)\n" $((MAX - 1))
+    printf " 2. Baja producto\n"
+    printf " 3. Modificación producto (ID 0 a %d)\n" $((MAX - 1))
+    printf " 4. Mostrar inventario\n"
+    printf " 5. Generar archivo HTML\n"
+    printf " 6. Buscar producto por nombre\n"
+    printf " 7. Salir\n"
+    printf "=============================================================\n"
+    printf "\n"
 }
 
 #refactor para encapsular procesamiento de opciones
@@ -154,8 +158,20 @@ get_option_from_user_and_execute_action(){
     return 0
 }
 
+clear_screen() {
+    # 1. Intenta usar el comando ejecutable nativo del sistema
+    if command -v clear >/dev/null 2>&1; then
+        clear
+    # 2. Respaldo para Windows nativo (CMD / PowerShell dentro de Git Bash)
+    elif command -v cls >/dev/null 2>&1; then
+        cls
+    # 3. Respaldo universal por código de escape ANSI (funciona en casi cualquier emulador de terminal)
+    else
+        printf "\033[c\033[2J\033[H"
+    fi
+}
 
-#▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ Product Function ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
+#▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ Product Functions ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
 
 search_products_by_partial_name(){
     local -r product_name=$1
@@ -470,6 +486,192 @@ save_data_to_tsv(){
     done
 }
 
+save_user_into_tsv(){
+    local username=$1
+    local password=$2
+
+    printf "%s\t%s\n" \
+        "${username}" \
+        "${password}" >> datos_usuarios.tsv
+
+    return 0
+}
+
+#▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ Auth Functions ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
+
+username_already_exists(){
+    local entered_username="$1"
+
+    if [[ ! -f datos_usuarios.tsv ]]; then
+        echo "No se encontró el archivo de usuarios. Por favor compruebe que exista datos_usuarios.tsv en su carpeta."
+        return 2
+    fi
+
+    #read line per line with tabulation as the separator for 3 columns
+    while IFS=$'\t' read -r registered_username registered_password; do
+
+        if [[ "${registered_username}" == "${entered_username}" ]] ; then
+            return 0
+        fi
+
+    done < datos_usuarios.tsv
+
+    return 1
+}
+
+hash_password(){
+    local password="$1"
+
+    printf "%s" "${password}" | sha256sum | awk '{print $1}' 
+
+    return 0
+}
+
+find_hashed_password_by_username(){
+    local entered_username="$1"
+
+    #read line per line with tabulation as the separator for 3 columns
+    while IFS=$'\t' read -r registered_user registered_pass; do
+
+        if [[ "${registered_user}" == "${entered_username}" ]] ; then
+            printf "%s" "${registered_pass}"
+            return 0
+        fi
+
+    done < datos_usuarios.tsv
+
+    return 1
+}
+
+create_user(){
+    local username=""
+    local password=""
+
+    clear_screen
+    
+    read -rp $'Ingresa tu nombre de usuario deseado:\n' username
+
+    if [[ -f datos_usuarios.tsv ]]; then
+        while username_already_exists "${username}" ; do
+            printf "¡El usuario ya existe! Por favor, ingresa otro. \n"
+            read -rp $'Ingresa tu nombre de usuario deseado: \n' username
+        done
+    fi
+
+    read -rsp $'Ingresa una contraseña para tu usuario: \n' password
+    echo ""
+
+    local hashed_password="$(hash_password "${password}")"
+
+    if save_user_into_tsv "${username}" "${hashed_password}" ; then
+        printf "¡El usuario se ha creado exitosamente!"
+        return 0
+    else
+        printf "¡Ha ocurrido un error! Por favor, chequea que el archivo users.tsv se encuentra presente en tu carpeta"
+        return 1
+    fi
+}
+
+auth_user(){
+    local -i tries=0
+    local username=""
+    local password=""
+
+    local hashed_password=""
+
+    clear_screen
+
+    if [[ ! -f datos_usuarios.tsv ]]; then
+        printf 'No se encuentra el archivo de usuarios. Por favor, primero registra un usuario para crearlo. \n'
+        return 1
+    fi
+
+    while (( tries<5 )); do
+        read -rp $'Ingresa tu usuario: \n' username
+
+        hashed_password="$( find_hashed_password_by_username "${username}" )"
+
+        if [[ -n "${hashed_password}" ]]; then
+            break
+        fi
+
+        (( tries++ ))
+        printf 'No se ha encontrado registro para ese usuario. Por favor, chequee que sea correcto. Intentos restantes %d\n' "$((5 - tries))"
+    done        
+
+    if (( tries>=5 )); then
+        printf "¡Intentos fallidos maximos alcanzados!"
+        exit 1
+    fi
+
+    tries=0
+
+    while (( tries<3 )); do
+        read -rsp $'Ingresa tu contraseña: \n' password
+        echo ""
+
+        password="$(hash_password "${password}")" 
+
+        if [[ "${hashed_password}" == "${password}" ]]; then
+            printf "Login exitoso. ¡Bienvenido! \n"
+            return 0
+        fi
+
+        (( tries++ ))
+        printf "Contraseña incorrecta. (intentos restantes "$(( 3 - tries ))")"
+    done
+
+    printf "¡Intentos fallidos maximos alcanzados!"
+    exit 1
+}
+
+show_auth_menu(){
+
+    printf "\n \n"
+    local c_bold="\033[1m"
+    local c_reset="\033[0m"
+
+    printf "=============================================================\n"
+    printf "                  ${c_bold}SISTEMA DE AUTENTICACIÓN${c_reset}\n"
+    printf "=============================================================\n"
+    printf "1. Registrar un nuevo usuario\n"
+    printf "2. Acceder a tu usuario\n"
+    printf "3. Salir\n\n"
+    
+}
+
+get_option_from_user_and_execute_login_or_register(){
+    local -r -i OPTION_REGISTER=1
+    local -r -i OPTION_LOGIN=2
+    local -r -i OPTION_EXIT=3
+
+    local -i option=0
+
+    while [[ "$option" != "$OPTION_EXIT" ]]; do
+        show_auth_menu
+
+        read -rp "Opcion: " option
+
+        case $option in
+            $OPTION_REGISTER)
+                    create_user
+                ;;
+            $OPTION_LOGIN)
+                    if auth_user ; then
+                        return 0
+                    fi
+                ;;
+            $OPTION_EXIT)
+                printf "Saliendo del programa..."
+                exit 0
+            ;;
+            *)
+                printf "\nOpcion invalida.\n"
+                ;;
+        esac
+    done
+}
+
 #▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ · ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
 
 
@@ -479,32 +681,13 @@ bienvenida() {
     local c_dim="\033[2m"
     local c_reset="\033[0m"
 
-    printf "${c_blue}┌─────────────────────────────────────────────────────────────┐${c_reset}\n"
-    printf "${c_blue}│${c_reset}                                                             ${c_blue}│${c_reset}\n"
-    printf "${c_blue}│${c_reset}            ${c_bold}¡Bienvenido al sistema de inventario!${c_reset}            ${c_blue}│${c_reset}\n"
-    printf "${c_blue}│${c_reset}                ${c_dim}Presiona CTRL+C para salir${c_reset}                   ${c_blue}│${c_reset}\n"
-    printf "${c_blue}│${c_reset}                                              ${c_blue}               │${c_reset}\n"
-    printf "${c_blue}└─────────────────────────────────────────────────────────────┘${c_reset}\n"
+    printf "${c_blue}+-----------------------------------------------------------+${c_reset}\n"
+    printf "${c_blue}|${c_reset}                                                           ${c_blue}|${c_reset}\n"
+    printf "${c_blue}|${c_reset}          ${c_bold}¡Bienvenido al sistema de inventario!${c_reset}            ${c_blue}|${c_reset}\n"
+    printf "${c_blue}|${c_reset}              ${c_dim}Presiona CTRL+C para salir${c_reset}                   ${c_blue}|${c_reset}\n"
+    printf "${c_blue}|${c_reset}                                                           ${c_blue}|${c_reset}\n"
+    printf "${c_blue}+-----------------------------------------------------------+${c_reset}\n"
     printf "\n"
-}
-
-autenticar() {
-    local -i intentos=0
-    local clave=""
-
-    while (( intentos < 3 )); do
-        read -rp "Ingrese clave (1234): " clave
-
-        if [[ "$clave" == "1234" ]]; then
-            printf "Acceso concedido.\n"
-            return 0
-        fi
-
-        intentos=$((intentos + 1))
-        printf "Clave incorrecta (%d/3 intentos).\n" "$intentos"
-    done
-
-    return 1
 }
 
 alta() {
@@ -589,10 +772,13 @@ modificar() {
 #▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ · ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
 
 main() {
+    declare -r -i MAX=50
+    declare -A inventario=()
+    declare -i inventory_length=0
+
     bienvenida
 
-    if ! autenticar; then
-        printf "\nAcceso denegado.\n"
+    if ! get_option_from_user_and_execute_login_or_register; then
         return 1
     fi
   
