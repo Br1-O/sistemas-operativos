@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-readonly PATH_PRODUCTS_TSV="datos_inventario.tsv"
-readonly PATH_USERS_TSV="datos_usuarios.tsv"
+DRIVER_NAME="TSV"
+DRIVER_PATH="./lib/${DRIVER_NAME}_drivers.sh"
+
+source "$DRIVER_PATH"
 
 #▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ My Functions ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
 
@@ -104,7 +106,7 @@ get_option_from_user_and_execute_action(){
                 
                     update_array_length_variable_by_ref inventory_g_ref inventory_length_g_ref
 
-                    save_data_to_tsv $1
+                    save_product $1
                 fi
                 ;;
             $OPCION_BAJA)
@@ -112,7 +114,7 @@ get_option_from_user_and_execute_action(){
 
                 baja "$id"
 
-                save_data_to_tsv $1
+                save_product $1
                 ;;
             $OPCION_MODIFICAR)
                 read -rp "Ingrese ID (0-$((MAX - 1))): " id
@@ -131,7 +133,7 @@ get_option_from_user_and_execute_action(){
                 p_temp[activo]=1
 
                 modificar p_temp
-                save_data_to_tsv $1
+                save_product $1
                 ;;
             $OPCION_MOSTRAR)
                 mostrar
@@ -441,110 +443,8 @@ generate_html() {
     print_table_footer
 }
 
-#▀▀▀▀▀▀▀▀ tsv functions ▀▀▀▀▀▀▀▀#
-
-load_data_into_array_from_tsv(){
-    local -n invent_ref=$1
-
-    if [[ ! -f "$PATH_PRODUCTS_TSV" ]]; then
-        echo "No se encontró el archivo de inventario. Por favor compruebe que exista datos_inventario.tsv en su carpeta."
-        return 1
-    fi
-
-    #read line per line with tabulation as the separator for 7 columns
-    while IFS=$'\t' read -r id nombre categoria stock costo precio activo; do
-
-        #check if the first value if empty or not valid, if so, ignore
-        [[ -z "$id" || ! "$id" =~ ^[0-9]+$ ]] && continue
-
-        #load values into the array via reference
-        invent_ref["$id,id"]="$id"
-        invent_ref["$id,nombre"]="$nombre"
-        invent_ref["$id,categoria"]="$categoria"
-        invent_ref["$id,stock"]="$stock"
-        invent_ref["$id,costo"]="$costo"
-        invent_ref["$id,precio"]="$precio"
-        invent_ref["$id,activo"]="$activo"
-
-    done < "$PATH_PRODUCTS_TSV"
-}
-
-save_data_to_tsv(){
-    local -n invento_ref=$1
-    local -i i=0
-
-    > "$PATH_PRODUCTS_TSV"
-
-    for ((i=0; i<MAX; i++)); do
-        if [[ -n "${invento_ref[$i,id]}" ]]; then
-            printf "%d\t%s\t%s\t%s\t%s\t%s\t%s\n" \
-                "$i" \
-                "${invento_ref[$i,nombre]}" \
-                "${invento_ref[$i,categoria]}" \
-                "${invento_ref[$i,stock]}" \
-                "${invento_ref[$i,costo]}" \
-                "${invento_ref[$i,precio]}"\
-                "${invento_ref[$i,activo]}" >> "$PATH_PRODUCTS_TSV"
-        fi
-    done
-}
-
-save_user_into_tsv(){
-    local username=$1
-    local password=$2
-
-    printf "%s\t%s\n" \
-        "${username}" \
-        "${password}" >> "$PATH_USERS_TSV"
-
-    return 0
-}
 
 #▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ Auth Functions ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
-
-username_already_exists(){
-    local entered_username="$1"
-
-    if [[ ! -f datos_usuarios.tsv ]]; then
-        echo "No se encontró el archivo de usuarios. Por favor compruebe que exista datos_usuarios.tsv en su carpeta."
-        return 2
-    fi
-
-    #read line per line with tabulation as the separator for 3 columns
-    while IFS=$'\t' read -r registered_username registered_password; do
-
-        if [[ "${registered_username}" == "${entered_username}" ]] ; then
-            return 0
-        fi
-
-    done < datos_usuarios.tsv
-
-    return 1
-}
-
-hash_password(){
-    local password="$1"
-
-    printf "%s" "${password}" | sha256sum | awk '{print $1}' 
-
-    return 0
-}
-
-find_hashed_password_by_username(){
-    local entered_username="$1"
-
-    #read line per line with tabulation as the separator for 3 columns
-    while IFS=$'\t' read -r registered_user registered_pass; do
-
-        if [[ "${registered_user}" == "${entered_username}" ]] ; then
-            printf "%s" "${registered_pass}"
-            return 0
-        fi
-
-    done < datos_usuarios.tsv
-
-    return 1
-}
 
 create_user(){
     local username=""
@@ -552,21 +452,27 @@ create_user(){
 
     clear_screen
     
-    read -rp $'Ingresa tu nombre de usuario deseado:\n' username
+    while true; do
+        read -rp $'Ingresa tu nombre de usuario deseado:\n' username
 
-    if [[ -f datos_usuarios.tsv ]]; then
-        while username_already_exists "${username}" ; do
-            printf "¡El usuario ya existe! Por favor, ingresa otro. \n"
-            read -rp $'Ingresa tu nombre de usuario deseado: \n' username
-        done
-    fi
+        if [[ -z "${username}" ]]; then
+            printf "No puedes ingresar un nombre vacío.\n\n"
+        elif username_exists "${username}"; then
+            printf "¡El usuario ya existe! Por favor, ingresa otro.\n\n"
+        else
+            break
+        fi
+    done
 
     read -rsp $'Ingresa una contraseña para tu usuario: \n' password
     echo ""
 
-    local hashed_password="$(hash_password "${password}")"
+    while [[ -z "${password}" ]]; do
+        read -rsp $'No puedes ingresar una contraseña vacia.\nIngresa una contraseña para tu usuario:\n' password
+        echo ""
+    done
 
-    if save_user_into_tsv "${username}" "${hashed_password}" ; then
+    if save_user "${username}" "${password}" ; then
         printf "¡El usuario se ha creado exitosamente!"
         return 0
     else
@@ -584,22 +490,20 @@ auth_user(){
 
     clear_screen
 
-    if [[ ! -f datos_usuarios.tsv ]]; then
-        printf 'No se encuentra el archivo de usuarios. Por favor, primero registra un usuario para crearlo. \n'
-        return 1
-    fi
-
     while (( tries<5 )); do
         read -rp $'Ingresa tu usuario: \n' username
 
-        hashed_password="$( find_hashed_password_by_username "${username}" )"
-
-        if [[ -n "${hashed_password}" ]]; then
-            break
+        if [[ -z "${username}" ]]; then
+            printf $'No puedes ingresar un nombre vacio.\n'
+            continue
         fi
 
-        (( tries++ ))
-        printf 'No se ha encontrado registro para ese usuario. Por favor, chequee que sea correcto. Intentos restantes %d\n' "$((5 - tries))"
+        if ! username_exists "${username}"; then
+            (( tries++ ))
+            printf 'No se ha encontrado registro para ese usuario. Por favor, chequee que sea correcto. Intentos restantes %d\n' "$((5 - tries))"
+        else
+            break
+        fi
     done        
 
     if (( tries>=5 )); then
@@ -613,9 +517,12 @@ auth_user(){
         read -rsp $'Ingresa tu contraseña: \n' password
         echo ""
 
-        password="$(hash_password "${password}")" 
+        if [[ -z "${password}" ]]; then
+            printf $'No puedes ingresar una contraseña vacia.\n'
+            continue
+        fi
 
-        if [[ "${hashed_password}" == "${password}" ]]; then
+        if password_is_correct "${username}" "${password}" ; then
             printf "Login exitoso. ¡Bienvenido! \n"
             return 0
         fi
@@ -785,7 +692,7 @@ main() {
         return 1
     fi
   
-    load_data_into_array_from_tsv inventario
+    load_inventory_into_array inventario
 
     update_array_length_variable_by_ref inventario inventory_length
 
