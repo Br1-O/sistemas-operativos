@@ -2,6 +2,13 @@
 
 TSV_USERS_PATH="data/datos_usuarios.tsv"
 
+init_users_tsv() {
+    if [[ ! -f "$TSV_USERS_PATH" ]]; then
+        mkdir -p "$(dirname "$TSV_USERS_PATH")"
+        echo -e "username\tpassword" > "$TSV_USERS_PATH"
+    fi
+}
+
 save_user(){
     local username=$1
     local hashed_password="$(hash_password "$2")"
@@ -72,3 +79,4 @@ password_is_correct(){
         return 1
     fi
 }
+

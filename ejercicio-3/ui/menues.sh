@@ -101,7 +101,7 @@ get_option_from_user_and_execute_inventory_action(){
                 
                     update_array_length_variable_by_ref inventory_g_ref inventory_length_g_ref
 
-                    save_product $1
+                    save_product_wal "INSERT" p_temp
                 fi
                 ;;
             $OPCION_BAJA)
@@ -109,7 +109,7 @@ get_option_from_user_and_execute_inventory_action(){
 
                 baja "$id"
 
-                save_product $1
+                save_product_wal "DELETE" p_temp
                 ;;
             $OPCION_MODIFICAR)
                 read -rp "Ingrese ID (0-$((MAX - 1))): " id
@@ -128,10 +128,10 @@ get_option_from_user_and_execute_inventory_action(){
                 p_temp[activo]=1
 
                 modificar p_temp
-                save_product $1
+                save_product_wal "UPDATE" p_temp
                 ;;
             $OPCION_MOSTRAR)
-                mostrar
+                show_products_array inventory_g_ref inventory_length
                 ;;
             $OPCION_GENERAR_HTML)
                 generate_html $1

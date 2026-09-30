@@ -13,10 +13,20 @@ fi
 
 #▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ · ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
 
+
+declare -A inventario=()
+
+cleanup() {
+    flush_inventory_wal inventario
+    exit 0
+}
+
 main() {
     declare -r -i MAX=50
-    declare -A inventario=()
     declare -i inventory_length=0
+
+    # Ctrl+C (SIGINT), terminal closing (SIGHUP), termination (SIGTERM) and EXIT
+    trap cleanup SIGINT SIGHUP SIGTERM EXIT
 
     bienvenida
 

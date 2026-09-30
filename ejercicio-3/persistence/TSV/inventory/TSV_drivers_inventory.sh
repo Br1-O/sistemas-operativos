@@ -1,49 +1,46 @@
 #!/usr/bin/env bash
 
-TSV_INVENTORY_PATH="data/datos_inventario.tsv"
+source "./utils/wal_engine.sh"
 
-load_inventory_into_array(){
+TSV_INVENTORY_PATH="data/datos_inventario.tsv"
+JOURNAL_INVENTORY_PATH="data/datos_inventario.journal"
+
+#Dinamic schema for columns
+INVENTORY_COLUMNS=("id" "nombre" "categoria" "stock" "costo" "precio" "activo")
+
+load_inventory_into_array() {
     local -n invent_ref=$1
 
-    if [[ ! -f "${TSV_INVENTORY_PATH}" ]]; then
-        echo "No se encontró el archivo de inventario. Por favor compruebe que exista $TSV_INVENTORY_PATH"
-        return 1
+    #Init tsv file
+    init_tsv_schema "$TSV_INVENTORY_PATH" INVENTORY_COLUMNS
+
+    #Load tsv data into array
+    load_tsv_to_assoc_array "$TSV_INVENTORY_PATH" invent_ref INVENTORY_COLUMNS
+
+    if [[ -s "$JOURNAL_INVENTORY_PATH" ]]; then
+       #Load wal data into array if there are pending
+        wal_recover_and_apply "$JOURNAL_INVENTORY_PATH" invent_ref INVENTORY_COLUMNS
+        
+        #Writes the in memory array into the tsv file
+        flush_inventory_wal invent_ref
     fi
-
-    #read line per line with tabulation as the separator for 7 columns
-    while IFS=$'\t' read -r id nombre categoria stock costo precio activo; do
-
-        #check if the first value if empty or not valid, if so, ignore
-        [[ -z "$id" || ! "$id" =~ ^[0-9]+$ ]] && continue
-
-        #load values into the array via reference
-        invent_ref["$id,id"]="$id"
-        invent_ref["$id,nombre"]="$nombre"
-        invent_ref["$id,categoria"]="$categoria"
-        invent_ref["$id,stock"]="$stock"
-        invent_ref["$id,costo"]="$costo"
-        invent_ref["$id,precio"]="$precio"
-        invent_ref["$id,activo"]="$activo"
-
-    done < "${TSV_INVENTORY_PATH}"
 }
 
-save_product(){
-    local -n invento_ref=$1
-    local -i i=0
+#Writes a new entry into the wal log
+save_product_wal() {
+    local action="$1" # INSERT, UPDATE o DELETE
+    local -n prod_ref=$2
 
-    > "${TSV_INVENTORY_PATH}"
-
-    for ((i=0; i<inventory_length; i++)); do
-        if [[ -n "${invento_ref[$i,id]}" ]]; then
-            printf "%d\t%s\t%s\t%s\t%s\t%s\t%s\n" \
-                "$i" \
-                "${invento_ref[$i,nombre]}" \
-                "${invento_ref[$i,categoria]}" \
-                "${invento_ref[$i,stock]}" \
-                "${invento_ref[$i,costo]}" \
-                "${invento_ref[$i,precio]}"\
-                "${invento_ref[$i,activo]}" >> "${TSV_INVENTORY_PATH}"
-        fi
+    local row=()
+    for col in "${INVENTORY_COLUMNS[@]}"; do
+        row+=("${prod_ref[$col]}")
     done
+
+    wal_append_log "$JOURNAL_INVENTORY_PATH" "$action" "${row[@]}"
+}
+
+#Saves the in memory array into the tsv data file
+flush_inventory_wal() {
+    local -n invent_ref=$1
+    wal_checkpoint "$TSV_INVENTORY_PATH" "$JOURNAL_INVENTORY_PATH" invent_ref INVENTORY_COLUMNS MAX
 }

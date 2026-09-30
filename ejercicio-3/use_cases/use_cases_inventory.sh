@@ -105,7 +105,7 @@ show_products_array(){
         printf "%-5s %-15s %-15s %-8s %-10s %-10s %-8s\n" "ID" "NOMBRE" "CATEGORIA" "STOCK" "COSTO" "PRECIO" "ESTADO"
         printf "%s\n" "------------------------------------------------------------------------"
 
-            for ((i=0; i<array_length; i++)); do
+            for ((i=0; i<=array_length; i++)); do
                 if [[ -n "${array_ref[$i,id]}" ]]; then
                     printf "%-5s %-15s %-15s %-8s %-9s %-9s %-8s\n" \
                         "${array_ref[$i,id]}" \
@@ -163,7 +163,7 @@ mostrar() {
     printf "%-5s %-15s %-15s %-8s %-10s %-10s %-8s\n" "ID" "NOMBRE" "CATEGORIA" "STOCK" "COSTO" "PRECIO" "ESTADO"
     printf "%s\n" "------------------------------------------------------------------------"
 
-        for ((i=0; i<inventory_length; i++)); do
+        for ((i=0; i<=inventory_length; i++)); do
             if [[ -n "${inventario[$i,id]}" ]]; then
                 printf "%-5s %-15s %-15s %-8s $%-9s $%-9s %-8s\n" \
                     "${inventario[$i,id]}" \
