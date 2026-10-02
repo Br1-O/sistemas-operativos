@@ -146,7 +146,7 @@ baja() {
     local -i id=$1
 
     if ! es_id_valido "$id"; then
-        return
+        return 1
     fi
 
     if [[ ${inventario[$id,activo]:-0} -eq 1 ]]; then
@@ -154,7 +154,10 @@ baja() {
         printf "Producto %d dado de baja.\n" "$id"
     else
         printf "El producto ya fue dado de baja.\n"
+        return 1
     fi
+
+    return 0
 }
 
 mostrar() {
@@ -182,7 +185,7 @@ modificar() {
     local -i id=${produc_ref[id]} 
 
     if ! es_id_valido "$id"; then
-        return
+        return 1
     fi
 
     if [[ -n "${inventario[$id,id]}" ]] && [[ ${inventario[$id,activo]:-0} -eq 1 ]]; then
@@ -198,5 +201,8 @@ modificar() {
         
     else
         printf "El producto no existe o está dado de baja.\n"
+        return 1
     fi
+
+    return 0
 }

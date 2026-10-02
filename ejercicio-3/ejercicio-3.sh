@@ -25,8 +25,8 @@ main() {
     declare -r -i MAX=50
     declare -i inventory_length=0
 
-    # Ctrl+C (SIGINT), terminal closing (SIGHUP), termination (SIGTERM) and EXIT
-    trap cleanup SIGINT SIGHUP SIGTERM EXIT
+    # Ctrl+C (SIGINT), terminal closing (SIGHUP), termination (SIGTERM)
+    trap cleanup SIGINT SIGHUP SIGTERM
 
     bienvenida
 

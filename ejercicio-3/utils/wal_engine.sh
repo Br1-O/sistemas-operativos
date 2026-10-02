@@ -23,7 +23,7 @@ load_tsv_to_assoc_array() {
 
     local line_num=0
     while IFS=$'\t' read -r -a row_data; do
-        # Omitir cabecera
+
         ((line_num == 0)) && { ((line_num++)); continue; }
         [[ -z "${row_data[0]}" ]] && continue
 
@@ -48,7 +48,6 @@ wal_append_log() {
     local payload
     IFS=$'\t' eval 'payload="${record_data[*]}"'
 
-    # Escritura en caliente (append rápido)
     printf "%s\t%s\t%s\n" "$timestamp" "$action" "$payload" >> "$journal_path"
 }
 
@@ -104,6 +103,13 @@ wal_checkpoint() {
         fi
     done
 
-    mv "${tsv_path}.tmp" "$tsv_path"
-    > "$journal_path" 
+    if [[ -f "$tsv_path.tmp" ]]; then
+        mv "$tsv_path.tmp" "$tsv_path"
+
+        #keep the last 100 logs
+        if [[ -f "$journal_path" ]]; then
+            local journal_tmp="${journal_path}.tmp"
+            tail -n 100 "$journal_path" > "$journal_tmp" && mv "$journal_tmp" "$journal_path"
+        fi
+    fi
 }

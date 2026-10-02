@@ -2,6 +2,12 @@
 
 #▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ User Functions ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
 
+define CURRENT_USER=""
+
+set_current_user() {
+    CURRENT_USER="$1"
+}
+
 create_user(){
     local username=""
     local password=""
@@ -79,7 +85,8 @@ auth_user(){
         fi
 
         if password_is_correct "${username}" "${password}" ; then
-            printf "Login exitoso. ¡Bienvenido! \n"
+            set_current_user "${username}"
+            printf "Login exitoso. ¡Bienvenido, $username! \n"
             return 0
         fi
 

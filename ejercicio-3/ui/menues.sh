@@ -1,5 +1,29 @@
 #!/usr/bin/env bash
 
+is_numeric() {
+    if [[ "$1" =~ ^[0-9]+$ ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+is_decimal() {
+    if [[ "$1" =~ ^[0-9]+(\.[0-9]{1,2})?$ ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+is_alpha() {
+     if [[ "$1" =~ ^[a-zA-ZáéíóúÁÉÍÓÚñÑ[:space:]]+$ ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 bienvenida() {
     local c_blue="\033[1;34m"
     local c_bold="\033[1m"
@@ -74,7 +98,16 @@ get_option_from_user_and_execute_inventory_action(){
 
         case $opcion in
             $OPCION_ALTA)
+
                 read -rp "Ingrese Nombre: " nombre_temp
+                
+                while ! is_alpha "$nombre_temp"; do
+
+                    printf "El nombre solo puede poseer letras y espacios.\n"
+
+                    read -rp "Ingrese Nombre: " nombre_temp
+
+                done
 
                 local -i is_repeated=0
                 p_temp=()
@@ -82,12 +115,52 @@ get_option_from_user_and_execute_inventory_action(){
                 search_products_by_name "${nombre_temp}" p_temp is_repeated
 
                 if(( ${is_repeated} > 0 )); then
+
                     echo "¡El producto ya existe! No puede duplicar el nombre de productos."
+
                 else
+
                     read -rp "Ingrese Categoria: " categoria_temp
+
+                    while ! is_alpha "$categoria_temp"; do
+
+                        printf "La categoria solo puede poseer letras y espacios.\n"
+
+                        read -rp "Ingrese Categoria: " categoria_temp
+
+                    done
+
                     read -rp "Ingrese Stock: " stock_temp
+
+                    while ! is_numeric "$stock_temp"; do
+
+                        printf "El stock solo puede ser númerico entero.\n"
+
+                        read -rp "Ingrese Stock: " stock_temp
+
+                    done
+
                     read -rp "Ingrese Costo de Compra (proveedor): " costo_temp
+
+                    while ! is_decimal "$costo_temp"; do
+
+                        printf "El costo solo puede ser decimal o entero.\n"
+
+                        read -rp "Ingrese Costo de Compra (proveedor): " costo_temp
+
+                    done
+
                     read -rp "Ingrese Precio de venta: " precio_temp
+
+                    while ! is_decimal "$precio_temp"; do
+
+                        printf "El precio solo puede ser decimal o entero.\n"
+
+                        read -rp "Ingrese Precio de venta: " precio_temp
+
+                    done
+
+                    p_temp=()
 
                     p_temp[id]="${inventory_length_g_ref}"
                     p_temp[nombre]="$nombre_temp"
@@ -105,11 +178,38 @@ get_option_from_user_and_execute_inventory_action(){
                 fi
                 ;;
             $OPCION_BAJA)
-                read -rp "Ingrese ID a eliminar (0-$((MAX - 1))): " id
+                read -rp "Ingrese el nombre del producto a eliminar: " nombre_temp
 
-                baja "$id"
+                while ! is_alpha "$nombre_temp"; do
 
-                save_product_wal "DELETE" p_temp
+                    printf "El nombre solo puede poseer letras y espacios.\n"
+
+                    read -rp "Ingrese el nombre del producto a eliminar: " nombre_temp
+
+                done
+
+                local -A p_temp_with_index=()
+                quantity_of_p_found=0
+
+                search_products_by_name "$nombre_temp" p_temp_with_index quantity_of_p_found
+
+                if (( quantity_of_p_found > 1 )); then
+                    printf "Ese nombre corresponde a más de un producto. No se puede proceder con la petición. \n"
+                    continue
+                elif (( quantity_of_p_found == 0 )); then
+                    printf "No se encontró ningún producto con ese nombre. \n"
+                    continue
+                fi
+
+                p_temp[id]="${p_temp_with_index[0,id]}"
+                p_temp[nombre]="${p_temp_with_index[0,nombre]}"
+                p_temp[categoria]="${p_temp_with_index[0,categoria]}"
+                p_temp[stock]="${p_temp_with_index[0,stock]}"
+                p_temp[costo]="${p_temp_with_index[0,costo]}"
+                p_temp[precio]="${p_temp_with_index[0,precio]}"
+                p_temp[activo]="${p_temp_with_index[0,activo]}"
+
+                baja "${p_temp[id]}" && save_product_wal "DELETE" p_temp
                 ;;
             $OPCION_MODIFICAR)
                 read -rp "Ingrese ID (0-$((MAX - 1))): " id
@@ -119,6 +219,8 @@ get_option_from_user_and_execute_inventory_action(){
                 read -rp "Ingrese Costo de Compra (proveedor): " costo_temp
                 read -rp "Ingrese Precio: " precio_temp
 
+                p_temp=()
+
                 p_temp[id]="$id"
                 p_temp[nombre]="$nombre_temp"
                 p_temp[categoria]="$categoria_temp"
@@ -127,8 +229,7 @@ get_option_from_user_and_execute_inventory_action(){
                 p_temp[precio]="$precio_temp"
                 p_temp[activo]=1
 
-                modificar p_temp
-                save_product_wal "UPDATE" p_temp
+                modificar p_temp && save_product_wal "UPDATE" p_temp
                 ;;
             $OPCION_MOSTRAR)
                 show_products_array inventory_g_ref inventory_length
