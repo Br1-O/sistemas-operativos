@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #Init a new tsv file with the columns names passed as an array via columns_ref
-init_tsv_schema() {
+journal_init_storage() {
     local tsv_path="$1"
     local -n columns_ref=$2
 
@@ -14,7 +14,7 @@ init_tsv_schema() {
 }
 
 #Load the data from a tsv file into the array in memory
-load_tsv_to_assoc_array() {
+journal_load_to_assoc_array() {
     local tsv_path="$1"
     local -n target_array_ref=$2
     local -n columns_ref=$3
@@ -37,50 +37,62 @@ load_tsv_to_assoc_array() {
 }
 
 #Writes a new log into the wal action log, to ensure that it processes on any kind of closing of the app
-wal_append_log() {
+journal_append_log() {
     local journal_path="$1"
-    local action="$2" # INSERT, UPDATE, DELETE
-    shift 2
+    local user="$2"
+    local action="$3" # INSERT, UPDATE, DELETE
+    shift 3
     local record_data=("$@")
 
     local timestamp
-    timestamp=$(date +%s)
+    timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+    local state="PENDING"
     local payload
     IFS=$'\t' eval 'payload="${record_data[*]}"'
 
-    printf "%s\t%s\t%s\n" "$timestamp" "$action" "$payload" >> "$journal_path"
+    printf "%s\t%s\t%s\t%s\t%s\n" "$timestamp" "$user" "$action" "$payload" "$state" >> "$journal_path"
 }
 
 #Applies the changes from the wal log into the array in memory
-wal_recover_and_apply() {
+journal_wal_recover_and_apply() {
     local journal_path="$1"
     local -n target_array_ref=$2
     local -n columns_ref=$3
 
     [[ ! -f "$journal_path" ]] && return 0
 
-    while IFS=$'\t' read -r timestamp action payload; do
+    local tmp_journal="${journal_path}.tmp"
+    > "$tmp_journal"
+
+    while IFS=$'\t' read -r timestamp user action payload state; do
         [[ -z "$action" ]] && continue
 
-        IFS=$'\t' read -r -a fields <<< "$payload"
-        local primary_id="${fields[0]}"
+        if [[ "$state" == "PENDING" ]]; then
+            IFS=$'\t' read -r -a fields <<< "$payload"
+            local primary_id="${fields[0]}"
 
-        case "$action" in
-            INSERT|UPDATE)
-                for idx in "${!columns_ref[@]}"; do
-                    local col_name="${columns_ref[$idx]}"
-                    target_array_ref["${primary_id},${col_name}"]="${fields[$idx]}"
-                done
-                ;;
-            DELETE)
-                target_array_ref["${primary_id},activo"]=0
-                ;;
-        esac
+            case "$action" in
+                INSERT|UPDATE)
+                    for idx in "${!columns_ref[@]}"; do
+                        local col_name="${columns_ref[$idx]}"
+                        target_array_ref["${primary_id},${col_name}"]="${fields[$idx]}"
+                    done
+                    ;;
+                DELETE)
+                    target_array_ref["${primary_id},activo"]=0
+                    ;;
+            esac
+            state="DONE"
+        fi
+
+        printf "%s\t%s\t%s\t%s\t%s\n" "$timestamp" "$user" "$action" "$payload" "$state" >> "$tmp_journal"
     done < "$journal_path"
+
+    [[ -s "$tmp_journal" ]] && mv "$tmp_journal" "$journal_path"
 }
 
 #Saves the in memory array into the data tsv file, and empties the wal log
-wal_checkpoint() {
+journal_checkpoint() {
     local tsv_path="$1"
     local journal_path="$2"
     local -n target_array_ref=$3
@@ -104,12 +116,26 @@ wal_checkpoint() {
     done
 
     if [[ -f "$tsv_path.tmp" ]]; then
+
         mv "$tsv_path.tmp" "$tsv_path"
 
-        #keep the last 100 logs
+        #write and keep the last 100 logs
         if [[ -f "$journal_path" ]]; then
-            local journal_tmp="${journal_path}.tmp"
-            tail -n 100 "$journal_path" > "$journal_tmp" && mv "$journal_tmp" "$journal_path"
+
+            local tmp_journal="${journal_path}.tmp"
+            local tmp_journal_tail="${journal_path}.tail.tmp"
+            > "$tmp_journal"
+
+            while IFS=$'\t' read -r timestamp user action remainder; do
+                [[ -z "$action" ]] && continue
+
+                local payload_clean="${remainder%$'\t'*}"
+
+                printf "%s\t%s\t%s\t%s\tDONE\n" "$timestamp" "$user" "$action" "$payload_clean" >> "$tmp_journal"
+            done < "$journal_path"
+
+            tail -n 100 "$tmp_journal" > "$tmp_journal_tail" && mv "$tmp_journal_tail" "$journal_path"
+            rm -f "$tmp_journal"
         fi
     fi
 }

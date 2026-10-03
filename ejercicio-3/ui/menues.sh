@@ -174,7 +174,7 @@ get_option_from_user_and_execute_inventory_action(){
                 
                     update_array_length_variable_by_ref inventory_g_ref inventory_length_g_ref
 
-                    save_product_wal "INSERT" p_temp
+                    save_product_action_to_journal "INSERT" p_temp
                 fi
                 ;;
             $OPCION_BAJA)
@@ -209,27 +209,67 @@ get_option_from_user_and_execute_inventory_action(){
                 p_temp[precio]="${p_temp_with_index[0,precio]}"
                 p_temp[activo]="${p_temp_with_index[0,activo]}"
 
-                baja "${p_temp[id]}" && save_product_wal "DELETE" p_temp
+                baja "${p_temp[id]}" && save_product_action_to_journal "DELETE" p_temp
                 ;;
             $OPCION_MODIFICAR)
-                read -rp "Ingrese ID (0-$((MAX - 1))): " id
-                read -rp "Ingrese Nombre: " nombre_temp
-                read -rp "Ingrese Categoria: " categoria_temp
-                read -rp "Ingrese Stock: " stock_temp
-                read -rp "Ingrese Costo de Compra (proveedor): " costo_temp
-                read -rp "Ingrese Precio: " precio_temp
+
+                read -rp "Ingrese el nombre actual del producto a modificar: " nombre_temp
+
+                while ! is_alpha "$nombre_temp"; do
+
+                    printf "El nombre solo puede poseer letras y espacios.\n"
+
+                    read -rp "Ingrese el nombre actual del producto a modificar: " nombre_temp
+
+                done
+
+                local -A p_temp_with_index=()
+                quantity_of_p_found=0
+
+                search_products_by_name "$nombre_temp" p_temp_with_index quantity_of_p_found
+
+                if (( quantity_of_p_found > 1 )); then
+                    printf "Ese nombre corresponde a más de un producto. No se puede proceder con la petición. \n"
+                    continue
+                elif (( quantity_of_p_found == 0 )); then
+                    printf "No se encontró ningún producto con ese nombre. \n"
+                    continue
+                fi
 
                 p_temp=()
 
-                p_temp[id]="$id"
-                p_temp[nombre]="$nombre_temp"
-                p_temp[categoria]="$categoria_temp"
-                p_temp[stock]="$stock_temp"
-                p_temp[costo]="$costo_temp"
-                p_temp[precio]="$precio_temp"
+                p_temp[id]="${p_temp_with_index[0,id]}"
+                p_temp[nombre]="${p_temp_with_index[0,nombre]}"
+                p_temp[categoria]="${p_temp_with_index[0,categoria]}"
+                p_temp[stock]="${p_temp_with_index[0,stock]}"
+                p_temp[costo]="${p_temp_with_index[0,costo]}"
+                p_temp[precio]="${p_temp_with_index[0,precio]}"
+                p_temp[activo]="${p_temp_with_index[0,activo]}"
+
+                nombre_temp=""
+                categoria_temp=""
+                stock_temp=""
+                costo_temp=""
+                precio_temp=""
+
+                read -rp $"Ingrese el nuevo Nombre: [Actual: ${p_temp[nombre]}] - (enter para conservar el actual)" nombre_temp
+                p_temp[nombre]="${nombre_temp:-${p_temp[nombre]}}"
+
+                read -rp $"Ingrese Categoria: [Actual: ${p_temp[categoria]}] - (enter para conservar el original)" categoria_temp
+                p_temp[categoria]="${categoria_temp:-${p_temp[categoria]}}"
+
+                read -rp $"Ingrese Stock: [Actual: ${p_temp[stock]}] - (enter para conservar el original)" stock_temp
+                p_temp[stock]="${stock_temp:-${p_temp[stock]}}"
+
+                read -rp $"Ingrese Costo de Compra (proveedor): [Actual: ${p_temp[costo]}] - (enter para conservar el original)" costo_temp
+                p_temp[costo]="${costo_temp:-${p_temp[costo]}}"
+
+                read -rp $"Ingrese Precio: [Actual: ${p_temp[precio]}] - (enter para conservar el original)" precio_temp
+                p_temp[precio]="${precio_temp:-${p_temp[precio]}}"
+
                 p_temp[activo]=1
 
-                modificar p_temp && save_product_wal "UPDATE" p_temp
+                modificar p_temp && save_product_action_to_journal "UPDATE" p_temp
                 ;;
             $OPCION_MOSTRAR)
                 show_products_array inventory_g_ref inventory_length

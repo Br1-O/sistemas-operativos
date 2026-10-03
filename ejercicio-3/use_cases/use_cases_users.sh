@@ -2,7 +2,7 @@
 
 #▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ User Functions ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
 
-define CURRENT_USER=""
+declare CURRENT_USER=""
 
 set_current_user() {
     CURRENT_USER="$1"

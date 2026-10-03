@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 
-DB_DRIVER_TYPE="TSV"
-DRIVER_PATH_INVENTORY="./persistence/${DB_DRIVER_TYPE}/inventory/${DB_DRIVER_TYPE}_drivers_inventory.sh"
-DRIVER_PATH_USERS="./persistence/${DB_DRIVER_TYPE}/users/${DB_DRIVER_TYPE}_drivers_users.sh"
+PERSISTENCE_ENGINE="${PERSISTENCE_ENGINE:-sqlite}"
 
-PERSISTENCE_DRIVERS=("$DRIVER_PATH_INVENTORY" "$DRIVER_PATH_USERS")
+load_persistence() {
+    local engine="${1:-$PERSISTENCE_ENGINE}"
 
-for driver in "${PERSISTENCE_DRIVERS[@]}"; do
-    if [[ -f "$driver" ]]; then
-        source "$driver"
+    if [[ "$PERSISTENCE_ENGINE" == "sqlite" ]]; then
+        source "$(dirname "${BASH_SOURCE[0]}")/persistence/sqlite/inventory_sqlite.sh"
+        source "$(dirname "${BASH_SOURCE[0]}")/persistence/sqlite/users_sqlite.sh"
     else
-        echo "No se encontraron los drivers de persistencia en la ruta $driver" >&2
-        exit 1
+        source "$(dirname "${BASH_SOURCE[0]}")/persistence/tsv/inventory_tsv.sh"
+        source "$(dirname "${BASH_SOURCE[0]}")/persistence/tsv/users_tsv.sh"
     fi
-done
+}
+
+load_persistence "$PERSISTENCE_ENGINE"
 
 load_modules(){
     local target_dir="$1"

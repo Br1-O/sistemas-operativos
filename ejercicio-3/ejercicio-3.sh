@@ -15,15 +15,15 @@ fi
 
 
 declare -A inventario=()
+declare -r -i MAX=50
+declare -i inventory_length=0
 
 cleanup() {
-    flush_inventory_wal inventario
+    commit_inventory_journal inventario
     exit 0
 }
 
 main() {
-    declare -r -i MAX=50
-    declare -i inventory_length=0
 
     # Ctrl+C (SIGINT), terminal closing (SIGHUP), termination (SIGTERM)
     trap cleanup SIGINT SIGHUP SIGTERM

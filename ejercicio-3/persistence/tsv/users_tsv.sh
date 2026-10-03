@@ -2,7 +2,7 @@
 
 TSV_USERS_PATH="data/datos_usuarios.tsv"
 
-init_users_tsv() {
+init_users_storage() {
     if [[ ! -f "$TSV_USERS_PATH" ]]; then
         mkdir -p "$(dirname "$TSV_USERS_PATH")"
         echo -e "username\tpassword" > "$TSV_USERS_PATH"
@@ -79,4 +79,3 @@ password_is_correct(){
         return 1
     fi
 }
-
