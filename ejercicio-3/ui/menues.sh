@@ -1,30 +1,8 @@
 #!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/../utils/validations.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../utils/helpers.sh"
 
-is_numeric() {
-    if [[ "$1" =~ ^[0-9]+$ ]]; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-is_decimal() {
-    if [[ "$1" =~ ^[0-9]+(\.[0-9]{1,2})?$ ]]; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-is_alpha() {
-     if [[ "$1" =~ ^[a-zA-ZáéíóúÁÉÍÓÚñÑ[:space:]]+$ ]]; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-bienvenida() {
+welcome_message() {
     local c_blue="\033[1;34m"
     local c_bold="\033[1m"
     local c_dim="\033[2m"
@@ -76,38 +54,32 @@ show_auth_menu(){
 #refactor para encapsular procesamiento de opciones
 get_option_from_user_and_execute_inventory_action(){
     
-    local -r -i OPCION_ALTA=1
-    local -r -i OPCION_BAJA=2
-    local -r -i OPCION_MODIFICAR=3
-    local -r -i OPCION_MOSTRAR=4
-    local -r -i OPCION_GENERAR_HTML=5
-    local -r -i OPCION_BUSCAR_PRODUCTO_POR_NOMBRE=6
-    local -r -i OPCION_SALIR=7
+    local -r -i OPTION_CREATE=1
+    local -r -i OPTION_DELETE=2
+    local -r -i OPTION_UPDATE=3
+    local -r -i OPTION_SHOW_ALL=4
+    local -r -i OPTION_GENERATE_HTML=5
+    local -r -i OPTION_SEARCH_ONE_BY_NAME=6
+    local -r -i OPTION_EXIT=7
 
-    local -i opcion=0
+    local -i action_option=0
     local -n inventory_g_ref=$1    
     local -n inventory_length_g_ref=$2
 
+    local products_categories=("frutas" "verduras" "enlatados" "almacen" "otros")
 
-    while [[ "$opcion" != "$OPCION_SALIR" ]]; do
+
+    while [[ "$action_option" != "$OPTION_EXIT" ]]; do
         show_inventory_menu
         local -i id=0
         local -A p_temp
 
-        read -rp "Opcion: " opcion
+        read -rp "Opcion: " action_option
 
-        case $opcion in
-            $OPCION_ALTA)
+        case $action_option in
+            $OPTION_CREATE)
 
-                read -rp "Ingrese Nombre: " nombre_temp
-                
-                while ! is_alpha "$nombre_temp"; do
-
-                    printf "El nombre solo puede poseer letras y espacios.\n"
-
-                    read -rp "Ingrese Nombre: " nombre_temp
-
-                done
+                ! alpha_field_with_validation "Ingrese el nombre del producto: " nombre_temp && continue
 
                 local -i is_repeated=0
                 p_temp=()
@@ -120,45 +92,13 @@ get_option_from_user_and_execute_inventory_action(){
 
                 else
 
-                    read -rp "Ingrese Categoria: " categoria_temp
+                    ! enum_field_with_validation "Ingrese Categoria: " products_categories categoria_temp && continue
 
-                    while ! is_alpha "$categoria_temp"; do
+                    ! numeric_field_with_validation "Ingrese Stock: " stock_temp && continue
 
-                        printf "La categoria solo puede poseer letras y espacios.\n"
+                    ! decimal_field_with_validation "Ingrese Costo de Compra (proveedor): " costo_temp && continue
 
-                        read -rp "Ingrese Categoria: " categoria_temp
-
-                    done
-
-                    read -rp "Ingrese Stock: " stock_temp
-
-                    while ! is_numeric "$stock_temp"; do
-
-                        printf "El stock solo puede ser númerico entero.\n"
-
-                        read -rp "Ingrese Stock: " stock_temp
-
-                    done
-
-                    read -rp "Ingrese Costo de Compra (proveedor): " costo_temp
-
-                    while ! is_decimal "$costo_temp"; do
-
-                        printf "El costo solo puede ser decimal o entero.\n"
-
-                        read -rp "Ingrese Costo de Compra (proveedor): " costo_temp
-
-                    done
-
-                    read -rp "Ingrese Precio de venta: " precio_temp
-
-                    while ! is_decimal "$precio_temp"; do
-
-                        printf "El precio solo puede ser decimal o entero.\n"
-
-                        read -rp "Ingrese Precio de venta: " precio_temp
-
-                    done
+                    ! decimal_field_with_validation "Ingrese Precio de venta: " precio_temp && continue
 
                     p_temp=()
 
@@ -170,23 +110,17 @@ get_option_from_user_and_execute_inventory_action(){
                     p_temp[precio]="$precio_temp"
                     p_temp[activo]=1
 
-                    alta p_temp
+                    clear_screen
+
+                    create_product p_temp
                 
                     update_array_length_variable_by_ref inventory_g_ref inventory_length_g_ref
 
                     save_product_action_to_journal "INSERT" p_temp
                 fi
                 ;;
-            $OPCION_BAJA)
-                read -rp "Ingrese el nombre del producto a eliminar: " nombre_temp
-
-                while ! is_alpha "$nombre_temp"; do
-
-                    printf "El nombre solo puede poseer letras y espacios.\n"
-
-                    read -rp "Ingrese el nombre del producto a eliminar: " nombre_temp
-
-                done
+            $OPTION_DELETE)
+                ! alpha_field_with_validation "Ingrese el nombre del producto a eliminar: " nombre_temp && continue
 
                 local -A p_temp_with_index=()
                 quantity_of_p_found=0
@@ -209,19 +143,13 @@ get_option_from_user_and_execute_inventory_action(){
                 p_temp[precio]="${p_temp_with_index[0,precio]}"
                 p_temp[activo]="${p_temp_with_index[0,activo]}"
 
-                baja "${p_temp[id]}" && save_product_action_to_journal "DELETE" p_temp
+                clear_screen
+
+                delete_product "${p_temp[id]}" && save_product_action_to_journal "DELETE" p_temp
                 ;;
-            $OPCION_MODIFICAR)
+            $OPTION_UPDATE)
 
-                read -rp "Ingrese el nombre actual del producto a modificar: " nombre_temp
-
-                while ! is_alpha "$nombre_temp"; do
-
-                    printf "El nombre solo puede poseer letras y espacios.\n"
-
-                    read -rp "Ingrese el nombre actual del producto a modificar: " nombre_temp
-
-                done
+                ! alpha_field_with_validation "Ingrese el nombre actual del producto a modificar: " nombre_temp && continue
 
                 local -A p_temp_with_index=()
                 quantity_of_p_found=0
@@ -252,42 +180,49 @@ get_option_from_user_and_execute_inventory_action(){
                 costo_temp=""
                 precio_temp=""
 
-                read -rp $"Ingrese el nuevo Nombre: [Actual: ${p_temp[nombre]}] - (enter para conservar el actual)" nombre_temp
-                p_temp[nombre]="${nombre_temp:-${p_temp[nombre]}}"
+                ! alpha_field_with_validation "Ingrese el nuevo Nombre: [Actual: ${p_temp[nombre]}] - (enter para conservar el actual)" nombre_temp "not_required" && continue
 
-                read -rp $"Ingrese Categoria: [Actual: ${p_temp[categoria]}] - (enter para conservar el original)" categoria_temp
+                ! enum_field_with_validation "Ingrese Categoria: [Actual: ${p_temp[categoria]}] - (enter para conservar el original)" products_categories categoria_temp "not_required" && continue
                 p_temp[categoria]="${categoria_temp:-${p_temp[categoria]}}"
 
-                read -rp $"Ingrese Stock: [Actual: ${p_temp[stock]}] - (enter para conservar el original)" stock_temp
-                p_temp[stock]="${stock_temp:-${p_temp[stock]}}"
+                ! numeric_field_with_validation "Ingrese Stock: [Actual: ${p_temp[stock]}] - (enter para conservar el original)" stock_temp "not_required" && continue
 
-                read -rp $"Ingrese Costo de Compra (proveedor): [Actual: ${p_temp[costo]}] - (enter para conservar el original)" costo_temp
+                ! decimal_field_with_validation "Ingrese Costo de Compra (proveedor): [Actual: ${p_temp[costo]}] - (enter para conservar el original)" costo_temp "not_required" && continue
                 p_temp[costo]="${costo_temp:-${p_temp[costo]}}"
 
-                read -rp $"Ingrese Precio: [Actual: ${p_temp[precio]}] - (enter para conservar el original)" precio_temp
-                p_temp[precio]="${precio_temp:-${p_temp[precio]}}"
+                ! decimal_field_with_validation "Ingrese Precio: [Actual: ${p_temp[precio]}] - (enter para conservar el original)" precio_temp "not_required" && continue
 
-                p_temp[activo]=1
+                if (( "${p_temp[activo]}"==0 )); then
+                    local -i reactivate=0
+                    local reactivate_options=( 0 1 )
+                    ! enum_field_with_validation "¿Desea reactivar el producto? Ingrese: 0 para mantener borrado | 1 para reactivar el producto." reactivate_options reactivate && continue
 
-                modificar p_temp && save_product_action_to_journal "UPDATE" p_temp
+                    (( "${reactivate}" == 1)) && p_temp[activo]=1
+                fi
+
+                clear_screen
+
+                update_product p_temp && save_product_action_to_journal "UPDATE" p_temp
                 ;;
-            $OPCION_MOSTRAR)
+            $OPTION_SHOW_ALL)
                 show_products_array inventory_g_ref inventory_length
                 ;;
-            $OPCION_GENERAR_HTML)
+            $OPTION_GENERATE_HTML)
                 generate_html $1
                 ;;
-            $OPCION_BUSCAR_PRODUCTO_POR_NOMBRE)
+            $OPTION_SEARCH_ONE_BY_NAME)
                 local -i products_found_length=0
                 local -A products_found=()                
 
-                read -rp "Ingrese Nombre: " nombre_temp
+                ! alpha_field_with_validation "Ingrese Nombre: " nombre_temp && continue
 
                 search_products_by_partial_name "$nombre_temp" products_found products_found_length
 
+                clear_screen
+
                 show_products_array products_found products_found_length
                 ;;
-            $OPCION_SALIR)
+            $OPTION_EXIT)
                 printf "\nSaliendo del programa...\n"
                 ;;
             *)
@@ -330,5 +265,3 @@ get_option_from_user_and_execute_login_or_register(){
         esac
     done
 }
-
-#▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ · ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#

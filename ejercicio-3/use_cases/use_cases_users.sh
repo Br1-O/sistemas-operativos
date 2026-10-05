@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ User Functions ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
+source "$(dirname "${BASH_SOURCE[0]}")/../utils/validations.sh"
 
 declare CURRENT_USER=""
 
@@ -15,11 +15,9 @@ create_user(){
     clear_screen
     
     while true; do
-        read -rp $'Ingresa tu nombre de usuario deseado:\n' username
+        ! alpha_field_with_validation $'Ingresa tu nombre de usuario deseado:\n' username "required" && return 1
 
-        if [[ -z "${username}" ]]; then
-            printf "No puedes ingresar un nombre vacío.\n\n"
-        elif username_exists "${username}"; then
+        if username_exists "${username}"; then
             printf "¡El usuario ya existe! Por favor, ingresa otro.\n\n"
         else
             break
@@ -53,12 +51,7 @@ auth_user(){
     clear_screen
 
     while (( tries<5 )); do
-        read -rp $'Ingresa tu usuario: \n' username
-
-        if [[ -z "${username}" ]]; then
-            printf $'No puedes ingresar un nombre vacio.\n'
-            continue
-        fi
+        ! alpha_field_with_validation $'Ingresa tu usuario: \n' username && return 1
 
         if ! username_exists "${username}"; then
             (( tries++ ))

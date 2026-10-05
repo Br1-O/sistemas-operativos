@@ -1,33 +1,6 @@
 #!/usr/bin/env bash
 
-#▀▀▀▀▀▀▀▀ EOC printing functions for html template ▀▀▀▀▀▀▀▀#
-
 HTML_VIEW_PATH="data/vista_inventario.html"
-
-print_table_headers() {
-    cat << EOF > "${HTML_VIEW_PATH}"
-    
-    <!DOCTYPE html>
-        <html>
-        <head>
-            <title> Reporte de Productos </title>
-        </head>
-        <body>
-            <h1> Listado de Productos </h1>
-            <table border="1">
-                <thead>
-                    <tr>
-                        <th> ID </th>
-                        <th> Nombre </th>
-                        <th> Categoría </th>
-                        <th> Stock </th>
-                        <th> Costo compra </th>
-                        <th> Precio venta </th>
-                    </tr>
-                </thead>
-                <tbody>
-EOF
-}
 
 print_table_headers() {
     cat << EOF > "${HTML_VIEW_PATH}"
@@ -47,6 +20,8 @@ print_table_headers() {
                 --text-color: #2d3436;
                 --border-color: #dfe6e9;
                 --zebra-bg: #f8f9fa;
+                --inactive-bg: #fde8e8;
+                --inactive-text: #c0392b;
             }
 
             body {
@@ -118,6 +93,16 @@ print_table_headers() {
                 background-color: #eef2f7;
                 transition: background-color 0.2s ease;
             }
+
+            /* Estilo específico para filas de productos NO DISPONIBLES */
+            tbody tr.row-inactive {
+                background-color: var(--inactive-bg) !important;
+                color: var(--inactive-text);
+            }
+
+            tbody tr.row-inactive:hover {
+                background-color: #fabbbb !important;
+            }
         </style>
     </head>
     <body>
@@ -145,9 +130,24 @@ print_table_body() {
     local -n i_ref=$1
 
     for ((i=0; i<inventory_length; i++)); do
+        local estado_texto="no disponible"
+        local row_class=""
+
+        if [[ "${i_ref[$i,activo]}" == "1" ]]; then
+            estado_texto="disponible"
+        else
+            row_class="class=\"row-inactive\""
+        fi
+
         cat << EOF >> "${HTML_VIEW_PATH}"
-        <tr>
-            <td> ${i_ref[$i,id]} </td> <td> ${i_ref[$i,nombre]} </td> <td> ${i_ref[$i,categoria]} </td> <td> ${i_ref[$i,stock]} </td> <td> ${i_ref[$i,costo]} </td> <td> ${i_ref[$i,precio]} </td> <td> ${i_ref[$i,activo]} </td>
+        <tr ${row_class}>
+            <td> ${i_ref[$i,id]} </td>
+            <td> ${i_ref[$i,nombre]} </td>
+            <td> ${i_ref[$i,categoria]} </td>
+            <td> ${i_ref[$i,stock]} </td>
+            <td> ${i_ref[$i,costo]} </td>
+            <td> ${i_ref[$i,precio]} </td>
+            <td> ${estado_texto} </td>
         </tr>
 EOF
     done

@@ -1,17 +1,5 @@
 #!/usr/bin/env bash
 
-#▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ Product Functions ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
-
-es_id_valido() {
-    local -i id=$1
-    if (( id < 0 || id >= MAX )); then
-        printf "Error: ID fuera de rango.\n"
-        return 1
-    fi
-    
-    return 0
-}
-
 update_array_length_variable_by_ref(){
     local -n inventory_ref=$1
     local -n inventory_length_ref=$2
@@ -99,14 +87,22 @@ search_products_by_name(){
 show_products_array(){
     local -n array_ref=$1
     local -i array_length=$2
+    local available_text=""
 
     if((array_length>0)); then
     
         printf "%-5s %-15s %-15s %-8s %-10s %-10s %-8s\n" "ID" "NOMBRE" "CATEGORIA" "STOCK" "COSTO" "PRECIO" "ESTADO"
         printf "%s\n" "------------------------------------------------------------------------"
 
-            for ((i=0; i<=array_length; i++)); do
+            for ((i=0; i<array_length; i++)); do
                 if [[ -n "${array_ref[$i,id]}" ]]; then
+
+                    if(( "${array_ref[$i,activo]}"==1 ));then
+                        available_text="Disponible"
+                    else
+                        available_text="No Disponible"
+                    fi
+
                     printf "%-5s %-15s %-15s %-8s %-9s %-9s %-8s\n" \
                         "${array_ref[$i,id]}" \
                         "${array_ref[$i,nombre]}" \
@@ -114,7 +110,7 @@ show_products_array(){
                         "${array_ref[$i,stock]}" \
                         "${array_ref[$i,costo]}" \
                         "${array_ref[$i,precio]}"\
-                        "${array_ref[$i,activo]}"
+                        "${available_text}"
                 fi
             done
     else 
@@ -122,13 +118,9 @@ show_products_array(){
     fi
 }
 
-alta() {
+create_product() {
     local -n prod_ref=$1
-    local -i id=${prod_ref[id]} 
-
-    if ! es_id_valido "$id"; then
-        return 1
-    fi
+    local -i id=${prod_ref[id]}
 
     inventario[$id,id]="$id"
     inventario[$id,nombre]="${prod_ref[nombre]}"
@@ -142,12 +134,8 @@ alta() {
         "$id" "${prod_ref[nombre]}" "${prod_ref[categoria]}" "${prod_ref[costo]}" "${prod_ref[precio]}"
 }
 
-baja() {
+delete_product() {
     local -i id=$1
-
-    if ! es_id_valido "$id"; then
-        return 1
-    fi
 
     if [[ ${inventario[$id,activo]:-0} -eq 1 ]]; then
         inventario[$id,activo]=0
@@ -160,47 +148,24 @@ baja() {
     return 0
 }
 
-mostrar() {
-    local -i i=0
-    printf "\nLISTADO:\n"
-    printf "%-5s %-15s %-15s %-8s %-10s %-10s %-8s\n" "ID" "NOMBRE" "CATEGORIA" "STOCK" "COSTO" "PRECIO" "ESTADO"
-    printf "%s\n" "------------------------------------------------------------------------"
-
-        for ((i=0; i<=inventory_length; i++)); do
-            if [[ -n "${inventario[$i,id]}" ]]; then
-                printf "%-5s %-15s %-15s %-8s $%-9s $%-9s %-8s\n" \
-                    "${inventario[$i,id]}" \
-                    "${inventario[$i,nombre]}" \
-                    "${inventario[$i,categoria]}" \
-                    "${inventario[$i,stock]}" \
-                    "${inventario[$i,costo]}" \
-                    "${inventario[$i,precio]}"\
-                    "${inventario[$i,activo]}"
-            fi
-        done
-}
-
-modificar() {
+update_product() {
     local -n produc_ref=$1
-    local -i id=${produc_ref[id]} 
+    local -i id=${produc_ref[id]}
 
-    if ! es_id_valido "$id"; then
-        return 1
-    fi
-
-    if [[ -n "${inventario[$id,id]}" ]] && [[ ${inventario[$id,activo]:-0} -eq 1 ]]; then
+    if [[ -n "${inventario[$id,id]}" ]]; then
 
         inventario[$id,nombre]="${produc_ref[nombre]}"
         inventario[$id,categoria]="${produc_ref[categoria]}"
         inventario[$id,stock]="${produc_ref[stock]}"
         inventario[$id,costo]="${produc_ref[costo]}"
         inventario[$id,precio]="${produc_ref[precio]}"
+        inventario[$id,activo]="${produc_ref[activo]}"
 
         printf "Producto %d (%s - categoria: %s) modificado correctamente con costo $%.2f. precio $%.2f.\n" \
         "$id" "${produc_ref[nombre]}" "${produc_ref[categoria]}" "${produc_ref[costo]}" "${produc_ref[precio]}"
         
     else
-        printf "El producto no existe o está dado de baja.\n"
+        printf "El producto no existe.\n"
         return 1
     fi
 

@@ -14,6 +14,8 @@
                 --text-color: #2d3436;
                 --border-color: #dfe6e9;
                 --zebra-bg: #f8f9fa;
+                --inactive-bg: #fde8e8;
+                --inactive-text: #c0392b;
             }
 
             body {
@@ -85,6 +87,16 @@
                 background-color: #eef2f7;
                 transition: background-color 0.2s ease;
             }
+
+            /* Estilo específico para filas de productos NO DISPONIBLES */
+            tbody tr.row-inactive {
+                background-color: var(--inactive-bg) !important;
+                color: var(--inactive-text);
+            }
+
+            tbody tr.row-inactive:hover {
+                background-color: #fabbbb !important;
+            }
         </style>
     </head>
     <body>
@@ -105,11 +117,95 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr>
-            <td> 0 </td> <td> papas </td> <td> verduras </td> <td> 1111 </td> <td> 111.0 </td> <td> 11111.0 </td> <td> 0 </td>
+        <tr class="row-inactive">
+            <td> 0 </td>
+            <td> papas </td>
+            <td> verduras </td>
+            <td> 1111 </td>
+            <td> 111.0 </td>
+            <td> 11111.0 </td>
+            <td> no disponible </td>
         </tr>
-        <tr>
-            <td> 1 </td> <td> zanahoria </td> <td> verduras </td> <td> 200 </td> <td> 2000 </td> <td> 20000 </td> <td> 1 </td>
+        <tr >
+            <td> 1 </td>
+            <td> zanahoria </td>
+            <td> verduras </td>
+            <td> 200 </td>
+            <td> 2000.0 </td>
+            <td> 20000.0 </td>
+            <td> disponible </td>
+        </tr>
+        <tr >
+            <td> 2 </td>
+            <td> batatas </td>
+            <td> verduras </td>
+            <td> 500 </td>
+            <td> 5000.0 </td>
+            <td> 7000.0 </td>
+            <td> disponible </td>
+        </tr>
+        <tr >
+            <td> 3 </td>
+            <td> hinojos </td>
+            <td> verduras </td>
+            <td> 100 </td>
+            <td> 1000.0 </td>
+            <td> 10000.0 </td>
+            <td> disponible </td>
+        </tr>
+        <tr class="row-inactive">
+            <td> 4 </td>
+            <td> bananas </td>
+            <td> frutas </td>
+            <td> 222 </td>
+            <td> 222.1 </td>
+            <td> 222.0 </td>
+            <td> no disponible </td>
+        </tr>
+        <tr >
+            <td> 5 </td>
+            <td> manzanas </td>
+            <td> frutas </td>
+            <td> 200 </td>
+            <td> 300.0 </td>
+            <td> 2000.0 </td>
+            <td> disponible </td>
+        </tr>
+        <tr >
+            <td> 6 </td>
+            <td> naranjas </td>
+            <td> frutas </td>
+            <td> 200 </td>
+            <td> 2000.0 </td>
+            <td> 3000.0 </td>
+            <td> disponible </td>
+        </tr>
+        <tr >
+            <td> 7 </td>
+            <td> adsfads </td>
+            <td> frutas </td>
+            <td> 300 </td>
+            <td> 2000.0 </td>
+            <td> 3000.0 </td>
+            <td> disponible </td>
+        </tr>
+        <tr >
+            <td> 8 </td>
+            <td> patatas </td>
+            <td> verduras </td>
+            <td> 2000 </td>
+            <td> 3000.0 </td>
+            <td> 5000.0 </td>
+            <td> disponible </td>
+        </tr>
+        <tr class="row-inactive">
+            <td> 9 </td>
+            <td> asas </td>
+            <td> frutas </td>
+            <td> 200 </td>
+            <td> 3000.0 </td>
+            <td> 5000.0 </td>
+            <td> no disponible </td>
         </tr>
 
                         </tbody>

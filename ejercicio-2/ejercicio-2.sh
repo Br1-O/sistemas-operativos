@@ -100,7 +100,7 @@ get_option_from_user_and_execute_action(){
                     p_temp[precio]="$precio_temp"
                     p_temp[activo]=1
 
-                    alta p_temp
+                    create_product p_temp
                 
                     update_array_length_variable_by_ref inventory_g_ref inventory_length_g_ref
 
@@ -693,7 +693,7 @@ bienvenida() {
     printf "\n"
 }
 
-alta() {
+create_product() {
     local -n prod_ref=$1
     local -i id=${prod_ref[id]} 
 

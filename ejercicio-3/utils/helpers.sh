@@ -12,3 +12,19 @@ clear_screen() {
         printf "\033[c\033[2J\033[H"
     fi
 }
+
+get_value_with_cancel_action_option() {
+    local original_message="$1"
+    local -n out_value_ref=$2
+    local user_input=""
+
+    read -r -p "${original_message}("q" para cancelar) " user_input
+
+    if [[ "${user_input,,}" == "q" ]]; then
+        clear_screen
+        return 1
+    fi
+
+    out_value_ref="$user_input"
+    return 0
+}

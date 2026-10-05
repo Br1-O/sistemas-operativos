@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-#▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ Initial Configuration and import of modules ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
 
 CONFIG_IMPORTS_PATH="./config.sh"
 
@@ -10,8 +9,6 @@ else
     echo "No se encontraron las configuraciones de la aplicación."
     exit 1
 fi
-
-#▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀ · ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀#
 
 
 declare -A inventario=()
@@ -28,7 +25,7 @@ main() {
     # Ctrl+C (SIGINT), terminal closing (SIGHUP), termination (SIGTERM)
     trap cleanup SIGINT SIGHUP SIGTERM
 
-    bienvenida
+    welcome_message
 
     if ! get_option_from_user_and_execute_login_or_register; then
         return 1
