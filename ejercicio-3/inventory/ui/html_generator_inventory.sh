@@ -3,7 +3,7 @@
 HTML_VIEW_PATH="shared/data/vista_inventario.html"
 
 print_table_headers() {
-    cat << EOF > "${HTML_VIEW_PATH}"
+    cat << EOF 
     
     <!DOCTYPE html>
     <html lang="es">
@@ -20,8 +20,18 @@ print_table_headers() {
                 --text-color: #2d3436;
                 --border-color: #dfe6e9;
                 --zebra-bg: #f8f9fa;
-                --inactive-bg: #fde8e8;
-                --inactive-text: #c0392b;
+                
+                /* Colores pastel de stock */
+                --stock-low-bg: #fde8e8;       /* Rojo pastel suave (Stock < 20) */
+                --stock-low-text: #c0392b;
+                --stock-mid-bg: #fff5cc;       /* Amarillo pastel suave (20 <= Stock <= 30) */
+                --stock-mid-text: #b7791f;
+                --stock-high-bg: #e6f4ea;      /* Verde pastel suave (Stock > 30) */
+                --stock-high-text: #27ae60;
+
+                /* Estilo no disponible (Gris suave) */
+                --inactive-bg: #f1f2f6;
+                --inactive-text: #a4b0be;
             }
 
             body {
@@ -94,14 +104,72 @@ print_table_headers() {
                 transition: background-color 0.2s ease;
             }
 
-            /* Estilo específico para filas de productos NO DISPONIBLES */
+            /* Clases según nivel de stock */
+            tbody tr.stock-low {
+                background-color: var(--stock-low-bg) !important;
+                color: var(--stock-low-text);
+            }
+
+            tbody tr.stock-mid {
+                background-color: var(--stock-mid-bg) !important;
+                color: var(--stock-mid-text);
+            }
+
+            tbody tr.stock-high {
+                background-color: var(--stock-high-bg) !important;
+                color: var(--stock-high-text);
+            }
+
+            /* Estilo para productos NO DISPONIBLES */
             tbody tr.row-inactive {
                 background-color: var(--inactive-bg) !important;
-                color: var(--inactive-text);
+                color: var(--inactive-text) !important;
+                cursor: not-allowed;
+                opacity: 0.8;
             }
 
             tbody tr.row-inactive:hover {
-                background-color: #fabbbb !important;
+                background-color: #e4e7eb !important;
+            }
+
+            /* Reglas de Estado y Stock con Hover (Luminosidad / Oscurecimiento) */
+            tbody tr.stock-low {
+                background-color: var(--stock-low-bg) !important;
+                color: var(--stock-low-text);
+            }
+
+            tbody tr.stock-low:hover {
+                background-color: #fabbbb !important; /* Rojo pastel un poco más oscuro al pasar */
+            }
+
+            tbody tr.stock-mid {
+                background-color: var(--stock-mid-bg) !important;
+                color: var(--stock-mid-text);
+            }
+
+            tbody tr.stock-mid:hover {
+                background-color: #ffe899 !important; /* Amarillo pastel un poco más oscuro */
+            }
+
+            tbody tr.stock-high {
+                background-color: var(--stock-high-bg) !important;
+                color: var(--stock-high-text);
+            }
+
+            tbody tr.stock-high:hover {
+                background-color: #d1ebd6 !important; /* Verde pastel un poco más oscuro */
+            }
+
+            /* Estilo para productos NO DISPONIBLES */
+            tbody tr.row-inactive {
+                background-color: var(--inactive-bg) !important;
+                color: var(--inactive-text) !important;
+                cursor: not-allowed;
+                opacity: 0.8;
+            }
+
+            tbody tr.row-inactive:hover {
+                background-color: #e4e7eb !important; /* Gris un poco más oscuro */
             }
         </style>
     </head>
@@ -130,31 +198,43 @@ print_table_body() {
     local -n i_ref=$1
 
     for ((i=0; i<inventory_length; i++)); do
+        # Verificar que la clave exista en el mapa para evitar filas vacías
+        if [[ -z "${i_ref[$i,id]}" ]]; then
+            continue
+        fi
+
         local estado_texto="no disponible"
         local row_class=""
+        local -i stock_val=${i_ref[$i,stock]:-0}
 
         if [[ "${i_ref[$i,activo]}" == "1" ]]; then
             estado_texto="disponible"
+            
+            if (( stock_val < 20 )); then
+                row_class="class=\"stock-low\""
+            elif (( stock_val <= 30 )); then
+                row_class="class=\"stock-mid\""
+            else
+                row_class="class=\"stock-high\""
+            fi
         else
             row_class="class=\"row-inactive\""
         fi
 
-        cat << EOF >> "${HTML_VIEW_PATH}"
-        <tr ${row_class}>
-            <td> ${i_ref[$i,id]} </td>
-            <td> ${i_ref[$i,nombre]} </td>
-            <td> ${i_ref[$i,categoria]} </td>
-            <td> ${i_ref[$i,stock]} </td>
-            <td> ${i_ref[$i,costo]} </td>
-            <td> ${i_ref[$i,precio]} </td>
-            <td> ${estado_texto} </td>
-        </tr>
-EOF
+        printf '        <tr %s>\n' "${row_class}"
+        printf '            <td>%s</td>\n' "${i_ref[$i,id]}"
+        printf '            <td>%s</td>\n' "${i_ref[$i,nombre]}"
+        printf '            <td>%s</td>\n' "${i_ref[$i,categoria]}"
+        printf '            <td>%s</td>\n' "${i_ref[$i,stock]}"
+        printf '            <td>%s</td>\n' "${i_ref[$i,costo]}"
+        printf '            <td>%s</td>\n' "${i_ref[$i,precio]}"
+        printf '            <td>%s</td>\n' "${estado_texto}"
+        printf '        </tr>\n'
     done
 }
 
 print_table_footer() {
-    cat << EOF >> "${HTML_VIEW_PATH}"
+    cat << EOF
 
                         </tbody>
                     </table>
@@ -167,8 +247,15 @@ EOF
 
 generate_html() {
     local -n inv_ref=$1
+    {
+        print_table_headers
+        print_table_body inv_ref
+        print_table_footer
+    } > "${HTML_VIEW_PATH}"
 
-    print_table_headers
-    print_table_body inv_ref
-    print_table_footer
+    if [ $? -eq 0 ]; then
+        printf "Se ha generado el informe html correctamente.\n"
+    else
+        printf "No se ha podido generar el informe html.\n"
+    fi
 }

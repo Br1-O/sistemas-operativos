@@ -14,8 +14,18 @@
                 --text-color: #2d3436;
                 --border-color: #dfe6e9;
                 --zebra-bg: #f8f9fa;
-                --inactive-bg: #fde8e8;
-                --inactive-text: #c0392b;
+                
+                /* Colores pastel de stock */
+                --stock-low-bg: #fde8e8;       /* Rojo pastel suave (Stock < 20) */
+                --stock-low-text: #c0392b;
+                --stock-mid-bg: #fff5cc;       /* Amarillo pastel suave (20 <= Stock <= 30) */
+                --stock-mid-text: #b7791f;
+                --stock-high-bg: #e6f4ea;      /* Verde pastel suave (Stock > 30) */
+                --stock-high-text: #27ae60;
+
+                /* Estilo no disponible (Gris suave) */
+                --inactive-bg: #f1f2f6;
+                --inactive-text: #a4b0be;
             }
 
             body {
@@ -88,14 +98,72 @@
                 transition: background-color 0.2s ease;
             }
 
-            /* Estilo específico para filas de productos NO DISPONIBLES */
+            /* Clases según nivel de stock */
+            tbody tr.stock-low {
+                background-color: var(--stock-low-bg) !important;
+                color: var(--stock-low-text);
+            }
+
+            tbody tr.stock-mid {
+                background-color: var(--stock-mid-bg) !important;
+                color: var(--stock-mid-text);
+            }
+
+            tbody tr.stock-high {
+                background-color: var(--stock-high-bg) !important;
+                color: var(--stock-high-text);
+            }
+
+            /* Estilo para productos NO DISPONIBLES */
             tbody tr.row-inactive {
                 background-color: var(--inactive-bg) !important;
-                color: var(--inactive-text);
+                color: var(--inactive-text) !important;
+                cursor: not-allowed;
+                opacity: 0.8;
             }
 
             tbody tr.row-inactive:hover {
-                background-color: #fabbbb !important;
+                background-color: #e4e7eb !important;
+            }
+
+            /* Reglas de Estado y Stock con Hover (Luminosidad / Oscurecimiento) */
+            tbody tr.stock-low {
+                background-color: var(--stock-low-bg) !important;
+                color: var(--stock-low-text);
+            }
+
+            tbody tr.stock-low:hover {
+                background-color: #fabbbb !important; /* Rojo pastel un poco más oscuro al pasar */
+            }
+
+            tbody tr.stock-mid {
+                background-color: var(--stock-mid-bg) !important;
+                color: var(--stock-mid-text);
+            }
+
+            tbody tr.stock-mid:hover {
+                background-color: #ffe899 !important; /* Amarillo pastel un poco más oscuro */
+            }
+
+            tbody tr.stock-high {
+                background-color: var(--stock-high-bg) !important;
+                color: var(--stock-high-text);
+            }
+
+            tbody tr.stock-high:hover {
+                background-color: #d1ebd6 !important; /* Verde pastel un poco más oscuro */
+            }
+
+            /* Estilo para productos NO DISPONIBLES */
+            tbody tr.row-inactive {
+                background-color: var(--inactive-bg) !important;
+                color: var(--inactive-text) !important;
+                cursor: not-allowed;
+                opacity: 0.8;
+            }
+
+            tbody tr.row-inactive:hover {
+                background-color: #e4e7eb !important; /* Gris un poco más oscuro */
             }
         </style>
     </head>
@@ -118,103 +186,103 @@
                     </thead>
                     <tbody>
         <tr class="row-inactive">
-            <td> 0 </td>
-            <td> papas </td>
-            <td> verduras </td>
-            <td> 1111 </td>
-            <td> 111.0 </td>
-            <td> 11111.0 </td>
-            <td> no disponible </td>
+            <td>0</td>
+            <td>papas</td>
+            <td>verduras</td>
+            <td>1111</td>
+            <td>111.0</td>
+            <td>11111.0</td>
+            <td>no disponible</td>
         </tr>
-        <tr >
-            <td> 1 </td>
-            <td> zanahoria </td>
-            <td> verduras </td>
-            <td> 200 </td>
-            <td> 2000.0 </td>
-            <td> 20000.0 </td>
-            <td> disponible </td>
+        <tr class="stock-mid">
+            <td>1</td>
+            <td>zanahoria</td>
+            <td>verduras</td>
+            <td>20</td>
+            <td>2000.0</td>
+            <td>20000.0</td>
+            <td>disponible</td>
         </tr>
-        <tr >
-            <td> 2 </td>
-            <td> batatas </td>
-            <td> verduras </td>
-            <td> 500 </td>
-            <td> 5000.0 </td>
-            <td> 7000.0 </td>
-            <td> disponible </td>
+        <tr class="stock-low">
+            <td>2</td>
+            <td>batatas</td>
+            <td>verduras</td>
+            <td>10</td>
+            <td>5000.0</td>
+            <td>7000.0</td>
+            <td>disponible</td>
         </tr>
-        <tr >
-            <td> 3 </td>
-            <td> hinojos </td>
-            <td> verduras </td>
-            <td> 100 </td>
-            <td> 1000.0 </td>
-            <td> 10000.0 </td>
-            <td> disponible </td>
-        </tr>
-        <tr class="row-inactive">
-            <td> 4 </td>
-            <td> bananas </td>
-            <td> frutas </td>
-            <td> 222 </td>
-            <td> 222.1 </td>
-            <td> 222.0 </td>
-            <td> no disponible </td>
-        </tr>
-        <tr >
-            <td> 5 </td>
-            <td> manzanas </td>
-            <td> frutas </td>
-            <td> 200 </td>
-            <td> 300.0 </td>
-            <td> 2000.0 </td>
-            <td> disponible </td>
-        </tr>
-        <tr >
-            <td> 6 </td>
-            <td> naranjas </td>
-            <td> frutas </td>
-            <td> 200 </td>
-            <td> 2000.0 </td>
-            <td> 3000.0 </td>
-            <td> disponible </td>
-        </tr>
-        <tr >
-            <td> 7 </td>
-            <td> adsfads </td>
-            <td> frutas </td>
-            <td> 300 </td>
-            <td> 2000.0 </td>
-            <td> 3000.0 </td>
-            <td> disponible </td>
-        </tr>
-        <tr >
-            <td> 8 </td>
-            <td> patatas </td>
-            <td> verduras </td>
-            <td> 2000 </td>
-            <td> 3000.0 </td>
-            <td> 5000.0 </td>
-            <td> disponible </td>
+        <tr class="stock-high">
+            <td>3</td>
+            <td>hinojos</td>
+            <td>verduras</td>
+            <td>100</td>
+            <td>1000.0</td>
+            <td>10000.0</td>
+            <td>disponible</td>
         </tr>
         <tr class="row-inactive">
-            <td> 9 </td>
-            <td> asas </td>
-            <td> frutas </td>
-            <td> 200 </td>
-            <td> 3000.0 </td>
-            <td> 5000.0 </td>
-            <td> no disponible </td>
+            <td>4</td>
+            <td>bananas</td>
+            <td>frutas</td>
+            <td>222</td>
+            <td>222.1</td>
+            <td>222.0</td>
+            <td>no disponible</td>
+        </tr>
+        <tr class="stock-high">
+            <td>5</td>
+            <td>manzanas</td>
+            <td>frutas</td>
+            <td>200</td>
+            <td>300.0</td>
+            <td>2000.0</td>
+            <td>disponible</td>
+        </tr>
+        <tr class="stock-high">
+            <td>6</td>
+            <td>naranjas</td>
+            <td>frutas</td>
+            <td>200</td>
+            <td>2000.0</td>
+            <td>3000.0</td>
+            <td>disponible</td>
+        </tr>
+        <tr class="stock-high">
+            <td>7</td>
+            <td>adsfads</td>
+            <td>frutas</td>
+            <td>300</td>
+            <td>2000.0</td>
+            <td>3000.0</td>
+            <td>disponible</td>
+        </tr>
+        <tr class="stock-high">
+            <td>8</td>
+            <td>patatas</td>
+            <td>verduras</td>
+            <td>2000</td>
+            <td>3000.0</td>
+            <td>5000.0</td>
+            <td>disponible</td>
         </tr>
         <tr class="row-inactive">
-            <td> 10 </td>
-            <td> peras </td>
-            <td> frutas </td>
-            <td> 111 </td>
-            <td> 1111.0 </td>
-            <td> 11111.0 </td>
-            <td> no disponible </td>
+            <td>9</td>
+            <td>asas</td>
+            <td>frutas</td>
+            <td>200</td>
+            <td>3000.0</td>
+            <td>5000.0</td>
+            <td>no disponible</td>
+        </tr>
+        <tr class="stock-high">
+            <td>10</td>
+            <td>peras</td>
+            <td>frutas</td>
+            <td>111</td>
+            <td>1111.0</td>
+            <td>11111.0</td>
+            <td>disponible</td>
         </tr>
 
                         </tbody>
