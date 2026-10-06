@@ -2,8 +2,8 @@
 
 source "$(dirname "${BASH_SOURCE[0]}")/journal_inventory_sqlite.sh"
 
-SQLITE_INVENTORY_PATH="data/datos_inventario.db"
-JOURNAL_INVENTORY_PATH="data/datos_inventario.sqlite.journal"
+SQLITE_INVENTORY_PATH="shared/data/datos_inventario.db"
+JOURNAL_INVENTORY_PATH="shared/data/datos_inventario.sqlite.journal"
 
 #Dinamic schema for columns
 INVENTORY_COLUMNS=("id" "nombre" "categoria" "stock" "costo" "precio" "activo")

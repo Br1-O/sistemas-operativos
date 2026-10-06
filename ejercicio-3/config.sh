@@ -6,11 +6,11 @@ load_persistence() {
     local engine="${1:-$PERSISTENCE_ENGINE}"
 
     if [[ "$PERSISTENCE_ENGINE" == "sqlite" ]]; then
-        source "$(dirname "${BASH_SOURCE[0]}")/persistence/sqlite/inventory_sqlite.sh"
-        source "$(dirname "${BASH_SOURCE[0]}")/persistence/sqlite/users_sqlite.sh"
+        source "$(dirname "${BASH_SOURCE[0]}")/inventory/persistence/sqlite/inventory_sqlite.sh"
+        source "$(dirname "${BASH_SOURCE[0]}")/user/persistence/sqlite/users_sqlite.sh"
     else
-        source "$(dirname "${BASH_SOURCE[0]}")/persistence/tsv/inventory_tsv.sh"
-        source "$(dirname "${BASH_SOURCE[0]}")/persistence/tsv/users_tsv.sh"
+        source "$(dirname "${BASH_SOURCE[0]}")/inventory/persistence/tsv/inventory_tsv.sh"
+        source "$(dirname "${BASH_SOURCE[0]}")/user/persistence/tsv/users_tsv.sh"
     fi
 }
 
@@ -30,6 +30,8 @@ load_modules(){
     done
 }
 
-load_modules "./use_cases" 
-load_modules "./ui" 
-load_modules "./utils" 
+load_modules "./inventory/use_cases" 
+load_modules "./inventory/ui" 
+load_modules "./shared/utils" 
+load_modules "./user/use_cases" 
+load_modules "./user/ui" 

@@ -28,3 +28,19 @@ get_value_with_cancel_action_option() {
     out_value_ref="$user_input"
     return 0
 }
+
+update_array_length_variable_by_ref(){
+    local -n inventory_ref=$1
+    local -n inventory_length_ref=$2
+    local -i new_inventory_length=0
+
+    for((i=0; i<MAX ;i++)); do
+
+        if [[ -n "${inventory_ref[$i,id]}" ]]; then
+            ((new_inventory_length++))
+        fi
+
+    done
+
+    inventory_length_ref="${new_inventory_length}"
+}

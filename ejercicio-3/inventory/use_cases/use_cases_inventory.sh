@@ -1,21 +1,5 @@
 #!/usr/bin/env bash
 
-update_array_length_variable_by_ref(){
-    local -n inventory_ref=$1
-    local -n inventory_length_ref=$2
-    local -i new_inventory_length=0
-
-    for((i=0; i<MAX ;i++)); do
-
-        if [[ -n "${inventory_ref[$i,id]}" ]]; then
-            ((new_inventory_length++))
-        fi
-
-    done
-
-    inventory_length_ref="${new_inventory_length}"
-}
-
 search_products_by_partial_name(){
     local -r product_name=$1
     local -n product_found_ref=$2
@@ -82,40 +66,6 @@ search_products_by_name(){
     done
 
     shopt -u nocasematch
-}
-
-show_products_array(){
-    local -n array_ref=$1
-    local -i array_length=$2
-    local available_text=""
-
-    if((array_length>0)); then
-    
-        printf "%-5s %-15s %-15s %-8s %-10s %-10s %-8s\n" "ID" "NOMBRE" "CATEGORIA" "STOCK" "COSTO" "PRECIO" "ESTADO"
-        printf "%s\n" "------------------------------------------------------------------------"
-
-            for ((i=0; i<array_length; i++)); do
-                if [[ -n "${array_ref[$i,id]}" ]]; then
-
-                    if(( "${array_ref[$i,activo]}"==1 ));then
-                        available_text="Disponible"
-                    else
-                        available_text="No Disponible"
-                    fi
-
-                    printf "%-5s %-15s %-15s %-8s %-9s %-9s %-8s\n" \
-                        "${array_ref[$i,id]}" \
-                        "${array_ref[$i,nombre]}" \
-                        "${array_ref[$i,categoria]}" \
-                        "${array_ref[$i,stock]}" \
-                        "${array_ref[$i,costo]}" \
-                        "${array_ref[$i,precio]}"\
-                        "${available_text}"
-                fi
-            done
-    else 
-        printf "No se encontraron productos. \n"
-    fi
 }
 
 create_product() {

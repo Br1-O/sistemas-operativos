@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-SQLITE_USERS_PATH="data/datos_usuarios.db"
+SQLITE_USERS_PATH="shared/data/datos_usuarios.db"
 
 init_users_storage() {
     mkdir -p "$(dirname "$SQLITE_USERS_PATH")"

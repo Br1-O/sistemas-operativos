@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TSV_USERS_PATH="data/datos_usuarios.tsv"
+TSV_USERS_PATH="shared/data/datos_usuarios.tsv"
 
 init_users_storage() {
     if [[ ! -f "$TSV_USERS_PATH" ]]; then

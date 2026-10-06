@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-source "$(dirname "${BASH_SOURCE[0]}")/../utils/validations.sh"
-source "$(dirname "${BASH_SOURCE[0]}")/../utils/helpers.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../shared/utils/validations.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../shared/utils/helpers.sh"
 
 welcome_message() {
     local c_blue="\033[1;34m"
@@ -36,19 +36,38 @@ show_inventory_menu(){
     printf "\n"
 }
 
-show_auth_menu(){
+show_products_array(){
+    local -n array_ref=$1
+    local -i array_length=$2
+    local available_text=""
 
-    printf "\n \n"
-    local c_bold="\033[1m"
-    local c_reset="\033[0m"
-
-    printf "=============================================================\n"
-    printf "                  ${c_bold}SISTEMA DE AUTENTICACIÓN${c_reset}\n"
-    printf "=============================================================\n"
-    printf "1. Registrar un nuevo usuario\n"
-    printf "2. Acceder a tu usuario\n"
-    printf "3. Salir\n\n"
+    if((array_length>0)); then
     
+        printf "%-5s %-15s %-15s %-8s %-10s %-10s %-8s\n" "ID" "NOMBRE" "CATEGORIA" "STOCK" "COSTO" "PRECIO" "ESTADO"
+        printf "%s\n" "------------------------------------------------------------------------"
+
+            for ((i=0; i<array_length; i++)); do
+                if [[ -n "${array_ref[$i,id]}" ]]; then
+
+                    if(( "${array_ref[$i,activo]}"==1 ));then
+                        available_text="Disponible"
+                    else
+                        available_text="No Disponible"
+                    fi
+
+                    printf "%-5s %-15s %-15s %-8s %-9s %-9s %-8s\n" \
+                        "${array_ref[$i,id]}" \
+                        "${array_ref[$i,nombre]}" \
+                        "${array_ref[$i,categoria]}" \
+                        "${array_ref[$i,stock]}" \
+                        "${array_ref[$i,costo]}" \
+                        "${array_ref[$i,precio]}"\
+                        "${available_text}"
+                fi
+            done
+    else 
+        printf "No se encontraron productos. \n"
+    fi
 }
 
 #refactor para encapsular procesamiento de opciones
@@ -181,16 +200,19 @@ get_option_from_user_and_execute_inventory_action(){
                 precio_temp=""
 
                 ! alpha_field_with_validation "Ingrese el nuevo Nombre: [Actual: ${p_temp[nombre]}] - (enter para conservar el actual)" nombre_temp "not_required" && continue
+                p_temp[nombre]="${nombre_temp:-${p_temp[nombre]}}"
 
                 ! enum_field_with_validation "Ingrese Categoria: [Actual: ${p_temp[categoria]}] - (enter para conservar el original)" products_categories categoria_temp "not_required" && continue
                 p_temp[categoria]="${categoria_temp:-${p_temp[categoria]}}"
 
                 ! numeric_field_with_validation "Ingrese Stock: [Actual: ${p_temp[stock]}] - (enter para conservar el original)" stock_temp "not_required" && continue
+                p_temp[stock]="${stock_temp:-${p_temp[stock]}}"
 
                 ! decimal_field_with_validation "Ingrese Costo de Compra (proveedor): [Actual: ${p_temp[costo]}] - (enter para conservar el original)" costo_temp "not_required" && continue
                 p_temp[costo]="${costo_temp:-${p_temp[costo]}}"
 
                 ! decimal_field_with_validation "Ingrese Precio: [Actual: ${p_temp[precio]}] - (enter para conservar el original)" precio_temp "not_required" && continue
+                p_temp[precio]="${precio_temp:-${p_temp[precio]}}"
 
                 if (( "${p_temp[activo]}"==0 )); then
                     local -i reactivate=0
@@ -232,36 +254,4 @@ get_option_from_user_and_execute_inventory_action(){
     done
 
     return 0
-}
-
-get_option_from_user_and_execute_login_or_register(){
-    local -r -i OPTION_REGISTER=1
-    local -r -i OPTION_LOGIN=2
-    local -r -i OPTION_EXIT=3
-
-    local -i option=0
-
-    while [[ "$option" != "$OPTION_EXIT" ]]; do
-        show_auth_menu
-
-        read -rp "Opcion: " option
-
-        case $option in
-            $OPTION_REGISTER)
-                    create_user
-                ;;
-            $OPTION_LOGIN)
-                    if auth_user ; then
-                        return 0
-                    fi
-                ;;
-            $OPTION_EXIT)
-                printf "Saliendo del programa..."
-                exit 0
-            ;;
-            *)
-                printf "\nOpcion invalida.\n"
-                ;;
-        esac
-    done
 }

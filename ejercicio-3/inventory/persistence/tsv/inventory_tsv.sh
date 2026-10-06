@@ -2,8 +2,8 @@
 
 source "$(dirname "${BASH_SOURCE[0]}")/journal_inventory_tsv.sh"
 
-TSV_INVENTORY_PATH="data/datos_inventario.tsv"
-JOURNAL_INVENTORY_PATH="data/datos_inventario.journal"
+TSV_INVENTORY_PATH="shared/data/datos_inventario.tsv"
+JOURNAL_INVENTORY_PATH="shared/data/datos_inventario.journal"
 
 #Dinamic schema for columns
 INVENTORY_COLUMNS=("id" "nombre" "categoria" "stock" "costo" "precio" "activo")

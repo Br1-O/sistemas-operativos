@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+
+HTML_VIEW_PATH="shared/data/vista_inventario.html"
+
+print_table_headers() {
+    cat << EOF > "${HTML_VIEW_PATH}"
     
     <!DOCTYPE html>
     <html lang="es">
@@ -117,96 +123,38 @@
                         </tr>
                     </thead>
                     <tbody>
-        <tr class="row-inactive">
-            <td> 0 </td>
-            <td> papas </td>
-            <td> verduras </td>
-            <td> 1111 </td>
-            <td> 111.0 </td>
-            <td> 11111.0 </td>
-            <td> no disponible </td>
+EOF
+}
+
+print_table_body() {
+    local -n i_ref=$1
+
+    for ((i=0; i<inventory_length; i++)); do
+        local estado_texto="no disponible"
+        local row_class=""
+
+        if [[ "${i_ref[$i,activo]}" == "1" ]]; then
+            estado_texto="disponible"
+        else
+            row_class="class=\"row-inactive\""
+        fi
+
+        cat << EOF >> "${HTML_VIEW_PATH}"
+        <tr ${row_class}>
+            <td> ${i_ref[$i,id]} </td>
+            <td> ${i_ref[$i,nombre]} </td>
+            <td> ${i_ref[$i,categoria]} </td>
+            <td> ${i_ref[$i,stock]} </td>
+            <td> ${i_ref[$i,costo]} </td>
+            <td> ${i_ref[$i,precio]} </td>
+            <td> ${estado_texto} </td>
         </tr>
-        <tr >
-            <td> 1 </td>
-            <td> zanahoria </td>
-            <td> verduras </td>
-            <td> 200 </td>
-            <td> 2000.0 </td>
-            <td> 20000.0 </td>
-            <td> disponible </td>
-        </tr>
-        <tr >
-            <td> 2 </td>
-            <td> batatas </td>
-            <td> verduras </td>
-            <td> 500 </td>
-            <td> 5000.0 </td>
-            <td> 7000.0 </td>
-            <td> disponible </td>
-        </tr>
-        <tr >
-            <td> 3 </td>
-            <td> hinojos </td>
-            <td> verduras </td>
-            <td> 100 </td>
-            <td> 1000.0 </td>
-            <td> 10000.0 </td>
-            <td> disponible </td>
-        </tr>
-        <tr class="row-inactive">
-            <td> 4 </td>
-            <td> bananas </td>
-            <td> frutas </td>
-            <td> 222 </td>
-            <td> 222.1 </td>
-            <td> 222.0 </td>
-            <td> no disponible </td>
-        </tr>
-        <tr >
-            <td> 5 </td>
-            <td> manzanas </td>
-            <td> frutas </td>
-            <td> 200 </td>
-            <td> 300.0 </td>
-            <td> 2000.0 </td>
-            <td> disponible </td>
-        </tr>
-        <tr >
-            <td> 6 </td>
-            <td> naranjas </td>
-            <td> frutas </td>
-            <td> 200 </td>
-            <td> 2000.0 </td>
-            <td> 3000.0 </td>
-            <td> disponible </td>
-        </tr>
-        <tr >
-            <td> 7 </td>
-            <td> adsfads </td>
-            <td> frutas </td>
-            <td> 300 </td>
-            <td> 2000.0 </td>
-            <td> 3000.0 </td>
-            <td> disponible </td>
-        </tr>
-        <tr >
-            <td> 8 </td>
-            <td> patatas </td>
-            <td> verduras </td>
-            <td> 2000 </td>
-            <td> 3000.0 </td>
-            <td> 5000.0 </td>
-            <td> disponible </td>
-        </tr>
-        <tr class="row-inactive">
-            <td> 9 </td>
-            <td> asas </td>
-            <td> frutas </td>
-            <td> 200 </td>
-            <td> 3000.0 </td>
-            <td> 5000.0 </td>
-            <td> no disponible </td>
-        </tr>
+EOF
+    done
+}
+
+print_table_footer() {
+    cat << EOF >> "${HTML_VIEW_PATH}"
 
                         </tbody>
                     </table>
@@ -214,3 +162,13 @@
             </div>
         </body>
     </html>
+EOF
+}
+
+generate_html() {
+    local -n inv_ref=$1
+
+    print_table_headers
+    print_table_body inv_ref
+    print_table_footer
+}
