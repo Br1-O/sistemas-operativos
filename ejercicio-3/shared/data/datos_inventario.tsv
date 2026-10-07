@@ -7,3 +7,11 @@ id	nombre	categoria	stock	costo	precio	activo
 5	manzanananana	frutas	2000	30	300	1
 6	zanahoria	verduras	500	2000	3000	1
 7	hinojos	verduras	1111	1111	111111	1
+8	patatata	verduras	1111	11111	111111	1
+9	brocoli	verduras	2	200	300	0
+10	apio	verduras	8	10	100	1
+11	zapallo	verduras	20	300	500	1
+12	calabaza	verduras	20	300	500	0
+13	champignones	verduras	28	300	500	1
+14	ajo	verduras	10	20	30	1
+15	kiwi	frutas	28	300	2200	1

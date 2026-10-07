@@ -1,14 +1,70 @@
 #!/usr/bin/env bash
 # Generado automáticamente (sqlite)
 
+ensure_package_installed() {
+    local cmd_name="$1"
+    local pkg_apt="${2:-$cmd_name}"
+    local pkg_dnf="${3:-$cmd_name}"
+    local pkg_pacman="${4:-$cmd_name}"
+    local pkg_zypper="${5:-$cmd_name}"
+
+    if [[ -z "$cmd_name" ]]; then
+        printf "\nError interno: Se debe especificar el nombre del comando a verificar.\n\n"
+        return 1
+    fi
+
+    # Si el ejecutable ya existe en el PATH, pasa la validación directamente
+    if command -v "$cmd_name" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    printf "\n Se requiere '%s' para continuar y no se detectó en el sistema.\n\n" "$cmd_name"
+
+    local confirm=""
+    read -rp "¿Desea intentar instalarlo automáticamente? [s/N]: " confirm
+    if [[ "${confirm,,}" != "s" ]]; then
+        printf "\nInstalación cancelada. No se puede continuar sin '%s'.\n\n" "$cmd_name"
+        return 1
+    fi
+
+    local pkg_manager=""
+    local install_cmd=""
+
+    if command -v apt-get >/dev/null 2>&1; then
+        pkg_manager="apt-get"
+        install_cmd="sudo apt-get update -qq && sudo apt-get install -y $pkg_apt"
+    elif command -v dnf >/dev/null 2>&1; then
+        pkg_manager="dnf"
+        install_cmd="sudo dnf install -y $pkg_dnf"
+    elif command -v pacman >/dev/null 2>&1; then
+        pkg_manager="pacman"
+        install_cmd="sudo pacman -S --noconfirm $pkg_pacman"
+    elif command -v zypper >/dev/null 2>&1; then
+        pkg_manager="zypper"
+        install_cmd="sudo zypper install -y $pkg_zypper"
+    else
+        printf "\nNo se detectó un gestor de paquetes soportado (apt, dnf, pacman, zypper).\n"
+        printf "Por favor, instale '%s' manualmente.\n\n" "$cmd_name"
+        return 1
+    fi
+
+    printf "\nSe procederá a instalar '%s' mediante %s.\n" "$cmd_name" "$pkg_manager"
+    printf "Es posible que el sistema solicite su contraseña de superusuario (sudo):\n\n"
+
+    if eval "$install_cmd"; then
+        printf "\n '%s' se instaló correctamente.\n\n" "$cmd_name"
+        return 0
+    else
+        printf "\nError durante la instalación de '%s'. Verifique sus permisos de sudo.\n\n" "$cmd_name"
+        return 1
+    fi
+}
+
 clear_screen() {
-    # 1. Intenta usar el comando ejecutable nativo del sistema
     if command -v clear >/dev/null 2>&1; then
         clear
-    # 2. Respaldo para Windows nativo (CMD / PowerShell dentro de Git Bash)
     elif command -v cls >/dev/null 2>&1; then
         cls
-    # 3. Respaldo universal por código de escape ANSI (funciona en casi cualquier emulador de terminal)
     else
         printf "\033[c\033[2J\033[H"
     fi
@@ -212,6 +268,71 @@ check_product_already_exists_by_name(){
     fi
 
     return 0
+}
+start_local_http_server() {
+    local -n pid_ref=$1
+    local -i port=${2:-8080}
+    local html_file="$3"
+
+    if (( pid_ref > 0 )) && kill -0 "$pid_ref" 2>/dev/null; then
+        printf "\nEl servidor ya está activo (PID: %d).\n" "$pid_ref"
+        return 1
+    fi
+
+    if [[ ! -f "$html_file" ]]; then
+        printf "\nError: No se encontró el archivo %s para servir.\n\n" "$html_file"
+        return 1
+    fi
+
+    fuser -k -9 "$port/tcp" >/dev/null 2>&1
+
+    (
+        trap 'pkill -P $$; exit 0' TERM INT EXIT
+        while true; do
+            {
+                printf "HTTP/1.1 200 OK\r\n"
+                printf "Content-Type: text/html; charset=UTF-8\r\n"
+                printf "Content-Length: %d\r\n" "$(wc -c < "$html_file")"
+                printf "Cache-Control: no-cache, no-store, must-revalidate\r\n"
+                printf "Pragma: no-cache\r\n"
+                printf "Expires: 0\r\n"
+                printf "Connection: close\r\n\r\n"
+                cat "$html_file"
+            } | nc -l -p "$port" -q 1 >/dev/null 2>&1
+        done
+    ) &
+
+    pid_ref=$!
+
+    local local_ip
+    local_ip=$(hostname -I | awk '{print $1}')
+    
+    printf "\nServidor HTTP iniciado (PID: %d).\n" "$pid_ref"
+    printf "   ➜ Acceso local:   http://localhost:%d\n" "$port"
+    printf "   ➜ Red Local (LAN): http://%s:%d\n\n" "$local_ip" "$port"
+}
+
+stop_local_http_server() {
+    local -n pid_ref=$1
+    local -i port=${2:-8080}
+
+    set +m 2>/dev/null
+
+    # Encapsulamos la EXACTA misma secuencia en una subshell silenciada
+    (
+        pkill -9 -f "nc -l -p $port" 2>/dev/null
+
+        if (( pid_ref > 0 )); then
+            kill -9 "$pid_ref" 2>/dev/null
+            kill -9 -"$pid_ref" 2>/dev/null
+            wait "$pid_ref" 2>/dev/null
+        fi
+
+        fuser -k -9 "$port/tcp" 2>/dev/null
+    ) >/dev/null 2>&1
+
+    pid_ref=0
+    printf "\n✅ Servidor detenido correctamente.\n\n"
 }
 
 
@@ -1130,7 +1251,6 @@ generate_html() {
 }
 
 
-
 welcome_message() {
     local c_blue="\033[1;34m"
     local c_bold="\033[1m"
@@ -1158,9 +1278,10 @@ show_inventory_menu(){
     printf " 2. Baja producto\n"
     printf " 3. Modificación producto (ID 0 a %d)\n"
     printf " 4. Mostrar inventario\n"
-    printf " 5. Generar archivo HTML\n"
-    printf " 6. Buscar producto por nombre\n"
-    printf " 7. Salir\n"
+    printf " 5. Buscar producto por nombre\n"
+    printf " 6. Generar archivo HTML\n"
+    printf " 7. Iniciar o Detener el server del inventario\n"
+    printf " 8. Salir\n"
     printf "=============================================================\n"
     printf "\n"
 }
@@ -1256,7 +1377,7 @@ show_products_array_paginated() {
         printf "%s\n" "------------------------------------------------------------------------"
         printf "Mostrando %d - %d de %d productos.\n\n" $((start_index + 1)) "$end_index" "$total_items"
         printf " [A] Anterior |  [S] Siguiente  |  [Q] Volver al menú: "
-        read -r -n 1 option
+        read -rsn 1 option
         echo ""
 
         case "${option,,}" in
@@ -1271,10 +1392,14 @@ show_products_array_paginated() {
                 fi
                 ;;
             q)
+                
                 break
                 ;;
         esac
     done
+    
+    clear_screen
+    stty sane
 }
 
 #refactor para encapsular procesamiento de opciones
@@ -1284,9 +1409,10 @@ get_option_from_user_and_execute_inventory_action(){
     local -r -i OPTION_DELETE=2
     local -r -i OPTION_UPDATE=3
     local -r -i OPTION_SHOW_ALL=4
-    local -r -i OPTION_GENERATE_HTML=5
-    local -r -i OPTION_SEARCH_ONE_BY_NAME=6
-    local -r -i OPTION_EXIT=7
+    local -r -i OPTION_SEARCH_ONE_BY_NAME=5
+    local -r -i OPTION_GENERATE_HTML=6
+    local -r -i OPTION_START_STOP_HTTP_SERVER=7
+    local -r -i OPTION_EXIT=8
 
     local action_option=0
     local -n inventory_g_ref=$1    
@@ -1294,14 +1420,14 @@ get_option_from_user_and_execute_inventory_action(){
 
     local products_categories=("frutas" "verduras" "enlatados" "almacen" "otros")
 
+    local -n SERVER_PID=$3
 
     while [[ "$action_option" != "$OPTION_EXIT" ]]; do
         show_inventory_menu
         local -i id=0
         local -A p_temp
 
-        stty sane
-        read -rn 1 -p "Opcion: " action_option
+        read -rsn 1 -p "Opcion: " action_option
         echo ""
         stty sane
 
@@ -1447,13 +1573,8 @@ get_option_from_user_and_execute_inventory_action(){
 
                 clear_screen
             
-                show_products_array_paginated inventory_g_ref inventory_length
-                ;;
-            $OPTION_GENERATE_HTML)
-
-                clear_screen
-            
-                generate_html $1
+                show_products_array_paginated inventory_g_ref inventory_length_g_ref
+                
                 ;;
             $OPTION_SEARCH_ONE_BY_NAME)
 
@@ -1470,11 +1591,34 @@ get_option_from_user_and_execute_inventory_action(){
 
                 show_products_array products_found products_found_length
                 ;;
+            $OPTION_GENERATE_HTML)
+
+                clear_screen
+            
+                generate_html $1
+                ;;
+            $OPTION_START_STOP_HTTP_SERVER)
+
+                clear_screen
+
+                local SERVER_PORT=8080
+                local HTML_FILE_PATH="./shared/data/vista_inventario.html"
+
+                if (( SERVER_PID > 0 )) && kill -0 "$SERVER_PID" 2>/dev/null; then
+                    stop_local_http_server SERVER_PID "$SERVER_PORT"
+                else
+                    ensure_package_installed "nc" "netcat-openbsd" "nc" "openbsd-netcat" "netcat-openbsd"&&start_local_http_server SERVER_PID "$SERVER_PORT" "$HTML_FILE_PATH"     
+                fi
+                ;;
             $OPTION_EXIT)
                 printf "\nSaliendo del programa...\n"
 
                 if declare -f commit_inventory_journal >/dev/null 2>&1; then
                     commit_inventory_journal inventory_global_array
+                fi
+
+                if declare -f stop_local_http_server >/dev/null 2>&1; then
+                    stop_local_http_server SERVER_PID 8080 >/dev/null 2>&1
                 fi
                 
                 stty sane 2>/dev/null
@@ -1540,11 +1684,13 @@ get_option_from_user_and_execute_login_or_register(){
 
 declare -A inventory_global_array=()
 declare -i inventory_length=0
+declare SERVER_PID_VALUE=0
 
 CONFIG_IMPORTS_PATH="./config.sh"
 
 cleanup() {
     commit_inventory_journal inventory_global_array
+    stop_local_http_server SERVER_PID
     exit 0
 }
 
@@ -1565,7 +1711,7 @@ main() {
 
     update_array_length_variable_by_ref inventory_global_array inventory_length
 
-    get_option_from_user_and_execute_inventory_action inventory_global_array inventory_length
+    get_option_from_user_and_execute_inventory_action inventory_global_array inventory_length SERVER_PID_VALUE
 
     return 0
 }

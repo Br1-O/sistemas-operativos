@@ -1,8 +1,7 @@
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../shared/utils/validations.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/../../shared/utils/helpers.sh"
-source "$(dirname "${BASH_SOURCE[0]}")/../../shared/utils/helpers.sh"
-
+source "$(dirname "${BASH_SOURCE[0]}")/../../shared/utils/nc_http_server.sh"
 
 welcome_message() {
     local c_blue="\033[1;34m"
@@ -31,9 +30,10 @@ show_inventory_menu(){
     printf " 2. Baja producto\n"
     printf " 3. Modificación producto (ID 0 a %d)\n"
     printf " 4. Mostrar inventario\n"
-    printf " 5. Generar archivo HTML\n"
-    printf " 6. Buscar producto por nombre\n"
-    printf " 7. Salir\n"
+    printf " 5. Buscar producto por nombre\n"
+    printf " 6. Generar archivo HTML\n"
+    printf " 7. Iniciar o Detener el server del inventario\n"
+    printf " 8. Salir\n"
     printf "=============================================================\n"
     printf "\n"
 }
@@ -129,7 +129,7 @@ show_products_array_paginated() {
         printf "%s\n" "------------------------------------------------------------------------"
         printf "Mostrando %d - %d de %d productos.\n\n" $((start_index + 1)) "$end_index" "$total_items"
         printf " [A] Anterior |  [S] Siguiente  |  [Q] Volver al menú: "
-        read -r -n 1 option
+        read -rsn 1 option
         echo ""
 
         case "${option,,}" in
@@ -144,10 +144,14 @@ show_products_array_paginated() {
                 fi
                 ;;
             q)
+                
                 break
                 ;;
         esac
     done
+    
+    clear_screen
+    stty sane
 }
 
 #refactor para encapsular procesamiento de opciones
@@ -157,9 +161,10 @@ get_option_from_user_and_execute_inventory_action(){
     local -r -i OPTION_DELETE=2
     local -r -i OPTION_UPDATE=3
     local -r -i OPTION_SHOW_ALL=4
-    local -r -i OPTION_GENERATE_HTML=5
-    local -r -i OPTION_SEARCH_ONE_BY_NAME=6
-    local -r -i OPTION_EXIT=7
+    local -r -i OPTION_SEARCH_ONE_BY_NAME=5
+    local -r -i OPTION_GENERATE_HTML=6
+    local -r -i OPTION_START_STOP_HTTP_SERVER=7
+    local -r -i OPTION_EXIT=8
 
     local action_option=0
     local -n inventory_g_ref=$1    
@@ -167,14 +172,14 @@ get_option_from_user_and_execute_inventory_action(){
 
     local products_categories=("frutas" "verduras" "enlatados" "almacen" "otros")
 
+    local -n SERVER_PID=$3
 
     while [[ "$action_option" != "$OPTION_EXIT" ]]; do
         show_inventory_menu
         local -i id=0
         local -A p_temp
 
-        stty sane
-        read -rn 1 -p "Opcion: " action_option
+        read -rsn 1 -p "Opcion: " action_option
         echo ""
         stty sane
 
@@ -320,13 +325,8 @@ get_option_from_user_and_execute_inventory_action(){
 
                 clear_screen
             
-                show_products_array_paginated inventory_g_ref inventory_length
-                ;;
-            $OPTION_GENERATE_HTML)
-
-                clear_screen
-            
-                generate_html $1
+                show_products_array_paginated inventory_g_ref inventory_length_g_ref
+                
                 ;;
             $OPTION_SEARCH_ONE_BY_NAME)
 
@@ -343,11 +343,34 @@ get_option_from_user_and_execute_inventory_action(){
 
                 show_products_array products_found products_found_length
                 ;;
+            $OPTION_GENERATE_HTML)
+
+                clear_screen
+            
+                generate_html $1
+                ;;
+            $OPTION_START_STOP_HTTP_SERVER)
+
+                clear_screen
+
+                local SERVER_PORT=8080
+                local HTML_FILE_PATH="./shared/data/vista_inventario.html"
+
+                if (( SERVER_PID > 0 )) && kill -0 "$SERVER_PID" 2>/dev/null; then
+                    stop_local_http_server SERVER_PID "$SERVER_PORT"
+                else
+                    ensure_package_installed "nc" "netcat-openbsd" "nc" "openbsd-netcat" "netcat-openbsd"&&start_local_http_server SERVER_PID "$SERVER_PORT" "$HTML_FILE_PATH"     
+                fi
+                ;;
             $OPTION_EXIT)
                 printf "\nSaliendo del programa...\n"
 
                 if declare -f commit_inventory_journal >/dev/null 2>&1; then
                     commit_inventory_journal inventory_global_array
+                fi
+
+                if declare -f stop_local_http_server >/dev/null 2>&1; then
+                    stop_local_http_server SERVER_PID 8080 >/dev/null 2>&1
                 fi
                 
                 stty sane 2>/dev/null
