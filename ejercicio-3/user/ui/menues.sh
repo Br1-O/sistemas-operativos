@@ -27,7 +27,7 @@ get_option_from_user_and_execute_login_or_register(){
     while [[ "$option" != "$OPTION_EXIT" ]]; do
         show_auth_menu
 
-        read -rn 1 -p "Opcion: " option
+        read -rp "Opcion: " option
 
         case $option in
             $OPTION_REGISTER)

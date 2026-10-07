@@ -919,12 +919,196 @@ print_table_body() {
 }
 
 print_table_footer() {
-    cat << EOF
+    cat << 'EOF'
 
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Web Component de Paginación -->
+                <app-pagination page-size="10"></app-pagination>
             </div>
+
+            <script>
+                class AppPagination extends HTMLElement {
+                    constructor() {
+                        super();
+                        this.attachShadow({ mode: 'open' });
+                        this.currentPage = 1;
+                        this.pageSize = parseInt(this.getAttribute('page-size')) || 10;
+                        this.pageSizeOptions = [5, 10, 20, 50];
+                    }
+
+                    connectedCallback() {
+                        // Esperar a que el DOM padre se renderice para calcular filas
+                        setTimeout(() => {
+                            this.tableBody = document.querySelector('tbody');
+                            if (!this.tableBody) return;
+                            this.allRows = Array.from(this.tableBody.querySelectorAll('tr'));
+                            this.render();
+                            this.updateTable();
+                        }, 0);
+                    }
+
+                    get totalPages() {
+                        return Math.ceil(this.allRows.length / this.pageSize) || 1;
+                    }
+
+                    updateTable() {
+                        const start = (this.currentPage - 1) * this.pageSize;
+                        const end = start + this.pageSize;
+
+                        this.allRows.forEach((row, index) => {
+                            if (index >= start && index < end) {
+                                row.style.display = '';
+                            } else {
+                                row.style.display = 'none';
+                            }
+                        });
+
+                        this.render();
+                    }
+
+                    changePage(newPage) {
+                        if (newPage < 1 || newPage > this.totalPages) return;
+                        this.currentPage = newPage;
+                        this.updateTable();
+                    }
+
+                    changePageSize(newSize) {
+                        this.pageSize = parseInt(newSize);
+                        this.currentPage = 1;
+                        this.updateTable();
+                    }
+
+                    render() {
+                        if (this.allRows && this.allRows.length === 0) {
+                            this.shadowRoot.innerHTML = '';
+                            return;
+                        }
+
+                        this.shadowRoot.innerHTML = `
+                            <style>
+                                :host {
+                                    display: block;
+                                    margin-top: 20px;
+                                }
+                                .pagination-container {
+                                    display: flex;
+                                    flex-direction: column;
+                                    align-items: center;
+                                    justify-content: space-between;
+                                    gap: 12px;
+                                    background-color: #ffffff;
+                                    border: 1px solid var(--border-color, #dfe6e9);
+                                    border-radius: 10px;
+                                    padding: 12px 16px;
+                                    font-size: 0.85rem;
+                                    color: #2d3436;
+                                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+                                }
+                                @media (min-width: 640px) {
+                                    .pagination-container {
+                                        flex-direction: row;
+                                    }
+                                }
+                                .controls-group {
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 8px;
+                                }
+                                .label {
+                                    font-size: 0.8rem;
+                                    color: #636e72;
+                                }
+                                select {
+                                    background-color: #f8f9fa;
+                                    color: #2d3436;
+                                    border: 1px solid #dfe6e9;
+                                    border-radius: 6px;
+                                    padding: 4px 8px;
+                                    font-size: 0.8rem;
+                                    outline: none;
+                                    cursor: pointer;
+                                    transition: border-color 0.2s;
+                                }
+                                select:focus {
+                                    border-color: #6c5ce7;
+                                }
+                                button {
+                                    padding: 6px 12px;
+                                    background-color: #ffffff;
+                                    border: 1px solid #dfe6e9;
+                                    border-radius: 6px;
+                                    color: #2d3436;
+                                    font-size: 0.8rem;
+                                    font-weight: 600;
+                                    cursor: pointer;
+                                    transition: all 0.2s;
+                                }
+                                button:hover:not(:disabled) {
+                                    border-color: #6c5ce7;
+                                    color: #6c5ce7;
+                                    background-color: #f8f9fa;
+                                }
+                                button:disabled {
+                                    opacity: 0.4;
+                                    cursor: not-allowed;
+                                }
+                                .page-info {
+                                    font-size: 0.8rem;
+                                    color: #636e72;
+                                }
+                                .page-info strong {
+                                    color: #2d3436;
+                                }
+                            </style>
+
+                            <div class="pagination-container">
+                                <div class="controls-group">
+                                    <span class="label">Mostrar:</span>
+                                    <select id="size-select">
+                                        ${this.pageSizeOptions.map(opt => `
+                                            <option value="${opt}" ${opt === this.pageSize ? 'selected' : ''}>
+                                                ${opt} por página
+                                            </option>
+                                        `).join('')}
+                                    </select>
+                                </div>
+
+                                <div class="controls-group">
+                                    <button id="btn-prev" ${this.currentPage === 1 ? 'disabled' : ''}>
+                                        Anterior
+                                    </button>
+
+                                    <span class="page-info">
+                                        Página <strong>${this.currentPage}</strong> de <strong>${this.totalPages}</strong>
+                                    </span>
+
+                                    <button id="btn-next" ${this.currentPage === this.totalPages ? 'disabled' : ''}>
+                                        Siguiente
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+
+                        // Event listeners
+                        this.shadowRoot.querySelector('#size-select').addEventListener('change', (e) => {
+                            this.changePageSize(e.target.value);
+                        });
+
+                        this.shadowRoot.querySelector('#btn-prev').addEventListener('click', () => {
+                            this.changePage(this.currentPage - 1);
+                        });
+
+                        this.shadowRoot.querySelector('#btn-next').addEventListener('click', () => {
+                            this.changePage(this.currentPage + 1);
+                        });
+                    }
+                }
+
+                customElements.define('app-pagination', AppPagination);
+            </script>
         </body>
     </html>
 EOF
@@ -944,6 +1128,7 @@ generate_html() {
         printf "No se ha podido generar el informe html.\n"
     fi
 }
+
 
 
 welcome_message() {
@@ -1014,6 +1199,84 @@ show_products_array(){
     fi
 }
 
+show_products_array_paginated() {
+    local -n array_ref=$1
+    local -i array_length=$2
+    local -i page_size=${3:-5}
+
+    if (( array_length == 0 )); then
+        printf "No se encontraron productos.\n"
+        return
+    fi
+
+    local -A unique_ids=()
+    local key
+    for key in "${!array_ref[@]}"; do
+        local id_part="${key%%,*}"
+        unique_ids["$id_part"]=1
+    done
+
+    local valid_ids=()
+    readarray -t valid_ids < <(printf '%s\n' "${!unique_ids[@]}" | sort -n)
+
+    local -i total_items=${#valid_ids[@]}
+    local -i total_pages=$(( (total_items + page_size - 1) / page_size ))
+    local -i current_page=1
+    local option=""
+
+    while true; do
+        clear
+        local -i start_index=$(( (current_page - 1) * page_size ))
+        local -i end_index=$(( start_index + page_size ))
+        (( end_index > total_items )) && end_index=$total_items
+
+        printf "=== LISTADO DE PRODUCTOS (Página %d de %d) ===\n\n" "$current_page" "$total_pages"
+        printf "%-5s %-15s %-15s %-8s %-10s %-10s %-8s\n" "ID" "NOMBRE" "CATEGORIA" "STOCK" "COSTO" "PRECIO" "ESTADO"
+        printf "%s\n" "------------------------------------------------------------------------"
+
+        for ((idx=start_index; idx<end_index; idx++)); do
+            local i="${valid_ids[$idx]}"
+            if [[ -n "${array_ref[$i,id]}" ]]; then
+                local available_text="No Disponible"
+                if (( array_ref[$i,activo] == 1 )); then
+                    available_text="Disponible"
+                fi
+
+                printf "%-5s %-15s %-15s %-8s %-9s %-9s %-8s\n" \
+                    "${array_ref[$i,id]}" \
+                    "${array_ref[$i,nombre]}" \
+                    "${array_ref[$i,categoria]}" \
+                    "${array_ref[$i,stock]}" \
+                    "${array_ref[$i,costo]}" \
+                    "${array_ref[$i,precio]}" \
+                    "${available_text}"
+            fi
+        done
+
+        printf "%s\n" "------------------------------------------------------------------------"
+        printf "Mostrando %d - %d de %d productos.\n\n" $((start_index + 1)) "$end_index" "$total_items"
+        printf " [A] Anterior |  [S] Siguiente  |  [Q] Volver al menú: "
+        read -r -n 1 option
+        echo ""
+
+        case "${option,,}" in
+            s)
+                if (( current_page < total_pages )); then
+                    (( current_page++ ))
+                fi
+                ;;
+            a)
+                if (( current_page > 1 )); then
+                    (( current_page-- ))
+                fi
+                ;;
+            q)
+                break
+                ;;
+        esac
+    done
+}
+
 #refactor para encapsular procesamiento de opciones
 get_option_from_user_and_execute_inventory_action(){
     
@@ -1037,12 +1300,17 @@ get_option_from_user_and_execute_inventory_action(){
         local -i id=0
         local -A p_temp
 
-        read -rp "Opcion: " action_option
+        stty sane
+        read -rn 1 -p "Opcion: " action_option
+        echo ""
+        stty sane
 
         case $action_option in
             $OPTION_CREATE)
 
-                ! alpha_field_with_validation "Ingrese el nombre del producto: " nombre_temp && continue
+                clear_screen
+
+                ! alpha_field_with_validation "Ingrese el nombre del producto a crear: " nombre_temp && continue
 
                 local -i is_repeated=0
                 p_temp=()
@@ -1083,6 +1351,9 @@ get_option_from_user_and_execute_inventory_action(){
                 fi
                 ;;
             $OPTION_DELETE)
+
+                clear_screen
+
                 ! alpha_field_with_validation "Ingrese el nombre del producto a eliminar: " nombre_temp && continue
 
                 local -A p_temp_with_index=()
@@ -1111,6 +1382,8 @@ get_option_from_user_and_execute_inventory_action(){
                 delete_product "${p_temp[id]}" inventory_g_ref && save_product_action_to_journal "DELETE" p_temp
                 ;;
             $OPTION_UPDATE)
+
+                clear_screen
 
                 ! alpha_field_with_validation "Ingrese el nombre actual del producto a modificar: " nombre_temp && continue
 
@@ -1171,16 +1444,25 @@ get_option_from_user_and_execute_inventory_action(){
                 update_product p_temp inventory_g_ref && save_product_action_to_journal "UPDATE" p_temp
                 ;;
             $OPTION_SHOW_ALL)
-                show_products_array inventory_g_ref inventory_length
+
+                clear_screen
+            
+                show_products_array_paginated inventory_g_ref inventory_length
                 ;;
             $OPTION_GENERATE_HTML)
+
+                clear_screen
+            
                 generate_html $1
                 ;;
             $OPTION_SEARCH_ONE_BY_NAME)
+
+                clear_screen
+
                 local -i products_found_length=0
                 local -A products_found=()                
 
-                ! alpha_field_with_validation "Ingrese Nombre: " nombre_temp && continue
+                ! alpha_field_with_validation "Ingrese el Nombre del producto a buscar: " nombre_temp && continue
 
                 search_products_by_partial_name "$nombre_temp" products_found products_found_length "$inventory_length_g_ref" inventory_g_ref
 
@@ -1190,6 +1472,13 @@ get_option_from_user_and_execute_inventory_action(){
                 ;;
             $OPTION_EXIT)
                 printf "\nSaliendo del programa...\n"
+
+                if declare -f commit_inventory_journal >/dev/null 2>&1; then
+                    commit_inventory_journal inventory_global_array
+                fi
+                
+                stty sane 2>/dev/null
+                exit 0
                 ;;
             *)
                 printf "\nOpcion invalida.\n"
@@ -1263,6 +1552,8 @@ main() {
 
     # Ctrl+C (SIGINT), terminal closing (SIGHUP), termination (SIGTERM)
     trap cleanup SIGINT SIGHUP SIGTERM
+
+    trap 'stty sane 2>/dev/null' EXIT INT TERM
 
     welcome_message
 

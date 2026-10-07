@@ -16,6 +16,8 @@ main() {
     # Ctrl+C (SIGINT), terminal closing (SIGHUP), termination (SIGTERM)
     trap cleanup SIGINT SIGHUP SIGTERM
 
+    trap 'stty sane 2>/dev/null' EXIT INT TERM
+
     welcome_message
 
     if ! get_option_from_user_and_execute_login_or_register; then

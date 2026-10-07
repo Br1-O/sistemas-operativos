@@ -1,6 +1,8 @@
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../shared/utils/validations.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/../../shared/utils/helpers.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../shared/utils/helpers.sh"
+
 
 welcome_message() {
     local c_blue="\033[1;34m"
@@ -171,7 +173,10 @@ get_option_from_user_and_execute_inventory_action(){
         local -i id=0
         local -A p_temp
 
+        stty sane
         read -rn 1 -p "Opcion: " action_option
+        echo ""
+        stty sane
 
         case $action_option in
             $OPTION_CREATE)
@@ -340,6 +345,13 @@ get_option_from_user_and_execute_inventory_action(){
                 ;;
             $OPTION_EXIT)
                 printf "\nSaliendo del programa...\n"
+
+                if declare -f commit_inventory_journal >/dev/null 2>&1; then
+                    commit_inventory_journal inventory_global_array
+                fi
+                
+                stty sane 2>/dev/null
+                exit 0
                 ;;
             *)
                 printf "\nOpcion invalida.\n"
