@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 
 HTML_VIEW_PATH="shared/data/vista_inventario.html"
 

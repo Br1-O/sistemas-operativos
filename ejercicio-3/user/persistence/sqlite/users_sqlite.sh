@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 
 SQLITE_USERS_PATH="shared/data/datos_usuarios.db"
 
@@ -14,16 +13,22 @@ EOF
 }
 
 hash_password() {
-    local password="$1"
-    printf "%s" "${password}" | sha256sum | awk '{print $1}'
+    local password_value="$1"
+    local -n _out_hash_ref=$2
+
+    read -r _out_hash_ref _ < <(printf '%s' "${password_value}" | sha256sum)
 }
 
 save_user() {
     local username="$1"
-    local hashed_password="$(hash_password "$2")"
+    local password="$2"
+    local hashed_password=""
+
+    hash_password "$password" hashed_password
 
     init_users_storage
-    sqlite3 "$SQLITE_USERS_PATH" "INSERT INTO Users (username, password) VALUES ('$username', '$hashed_password');" 2>/dev/null
+    local safe_username="${username//\'/\'\'}"
+    sqlite3 "$SQLITE_USERS_PATH" "INSERT INTO Users (username, password) VALUES ('$safe_username', '$hashed_password');" 2>/dev/null
     return $?
 }
 
@@ -34,10 +39,11 @@ username_exists() {
         return 2
     fi
 
-    local count
-    count=$(sqlite3 "$SQLITE_USERS_PATH" "SELECT COUNT(*) FROM Users WHERE username='$entered_username';")
+    local safe_username="${entered_username//\'/\'\'}"
+    local count=0
+    read -r count < <(sqlite3 "$SQLITE_USERS_PATH" "SELECT COUNT(*) FROM Users WHERE username='$safe_username';")
 
-    if [[ "$count" -gt 0 ]]; then
+    if (( count > 0 )); then
         return 0
     else
         return 1
@@ -46,16 +52,17 @@ username_exists() {
 
 find_hashed_password_by_username() {
     local entered_username="$1"
+    local -n _out_pass_ref=$2
 
     if [[ ! -f "$SQLITE_USERS_PATH" ]]; then
         return 1
     fi
 
-    local saved_pass
-    saved_pass=$(sqlite3 "$SQLITE_USERS_PATH" "SELECT password FROM Users WHERE username='$entered_username';")
+    local safe_username="${entered_username//\'/\'\'}"
+    _out_pass_ref=""
+    read -r _out_pass_ref < <(sqlite3 "$SQLITE_USERS_PATH" "SELECT password FROM Users WHERE username='$safe_username';")
 
-    if [[ -n "$saved_pass" ]]; then
-        printf "%s" "$saved_pass"
+    if [[ -n "$_out_pass_ref" ]]; then
         return 0
     fi
 
@@ -64,16 +71,19 @@ find_hashed_password_by_username() {
 
 password_is_correct() {
     local entered_username="$1"
-    local entered_password="$(hash_password "$2")"
-    local saved_password="$(find_hashed_password_by_username "${entered_username}")"
+    local entered_password="$2"
+    local db_password=""
+    local input_hash=""
 
-    if [[ -z "${saved_password}" ]]; then
+    if ! find_hashed_password_by_username "${entered_username}" db_password; then
         return 1
     fi
 
-    if [[ "${entered_password}" == "${saved_password}" ]]; then
+    hash_password "${entered_password}" input_hash
+
+    if [[ "${input_hash}" == "${db_password}" ]]; then
         return 0
-    else
-        return 1
     fi
+
+    return 1
 }

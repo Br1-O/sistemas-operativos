@@ -1,22 +1,13 @@
 #!/usr/bin/env bash
 
-
-CONFIG_IMPORTS_PATH="./config.sh"
-
-if [[ -f "${CONFIG_IMPORTS_PATH}" ]]; then
-    source "${CONFIG_IMPORTS_PATH}"
-else
-    echo "No se encontraron las configuraciones de la aplicación."
-    exit 1
-fi
-
-
-declare -A inventario=()
-declare -r -i MAX=50
+declare -A inventory_global_array=()
 declare -i inventory_length=0
 
+CONFIG_IMPORTS_PATH="./config.sh"
+source "${CONFIG_IMPORTS_PATH}" "${1,,:-sqlite}"
+
 cleanup() {
-    commit_inventory_journal inventario
+    commit_inventory_journal inventory_global_array
     exit 0
 }
 
@@ -31,11 +22,11 @@ main() {
         return 1
     fi
   
-    load_inventory_into_array inventario
+    load_inventory_into_array inventory_global_array
 
-    update_array_length_variable_by_ref inventario inventory_length
+    update_array_length_variable_by_ref inventory_global_array inventory_length
 
-    get_option_from_user_and_execute_inventory_action inventario inventory_length
+    get_option_from_user_and_execute_inventory_action inventory_global_array inventory_length
 
     return 0
 }

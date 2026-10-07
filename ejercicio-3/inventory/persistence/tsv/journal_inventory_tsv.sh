@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 
 #Init a new tsv file with the columns names passed as an array via columns_ref
 journal_init_storage() {
@@ -97,13 +96,24 @@ journal_checkpoint() {
     local journal_path="$2"
     local -n target_array_ref=$3
     local -n columns_ref=$4
-    local -i max_records=$5
 
     local header
     IFS=$'\t' eval 'header="${columns_ref[*]}"'
     echo -e "$header" > "${tsv_path}.tmp"
 
-    for ((i=0; i<max_records; i++)); do
+    # Extract unique ids from array
+    local -A unique_ids=()
+    local key
+    for key in "${!target_array_ref[@]}"; do
+        local id_part="${key%%,*}"
+        unique_ids["$id_part"]=1
+    done
+
+    local sorted_ids=()
+    readarray -t sorted_ids < <(printf '%s\n' "${!unique_ids[@]}" | sort -n)
+
+    # Iterate unique ids
+    for i in "${!sorted_ids[@]}"; do
         if [[ -n "${target_array_ref[$i,id]}" ]]; then
             local row=()
             for col_name in "${columns_ref[@]}"; do
@@ -116,25 +126,20 @@ journal_checkpoint() {
     done
 
     if [[ -f "$tsv_path.tmp" ]]; then
-
         mv "$tsv_path.tmp" "$tsv_path"
 
-        #write and keep the last 100 logs
         if [[ -f "$journal_path" ]]; then
-
             local tmp_journal="${journal_path}.tmp"
             local tmp_journal_tail="${journal_path}.tail.tmp"
             > "$tmp_journal"
 
             while IFS=$'\t' read -r timestamp user action remainder; do
                 [[ -z "$action" ]] && continue
-
                 local payload_clean="${remainder%$'\t'*}"
-
                 printf "%s\t%s\t%s\t%s\tDONE\n" "$timestamp" "$user" "$action" "$payload_clean" >> "$tmp_journal"
             done < "$journal_path"
 
-            tail -n 100 "$tmp_journal" > "$tmp_journal_tail" && mv "$tmp_journal_tail" "$journal_path"
+            tail -n 500 "$tmp_journal" > "$tmp_journal_tail" && mv "$tmp_journal_tail" "$journal_path"
             rm -f "$tmp_journal"
         fi
     fi

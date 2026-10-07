@@ -1,6 +1,4 @@
-#!/usr/bin/env bash
 
-# Inicializa el esquema en SQLite
 journal_sqlite_init_db() {
     local db_path="$1"
     mkdir -p "$(dirname "$db_path")"
@@ -30,7 +28,6 @@ VALUES (1, 'General', 'Categoría por defecto');
 EOF
 }
 
-# Carga la consulta SQL directamente en el array asociativo objetivo
 journal_sqlite_load_to_assoc_array() {
     local db_path="$1"
     local -n target_array_ref=$2
@@ -50,7 +47,6 @@ journal_sqlite_load_to_assoc_array() {
     done < <(sqlite3 -separator '|' "$db_path" "$query")
 }
 
-# Ejecuta la acción en la base de datos de manera atómica
 journal_sqlite_execute_action() {
     local db_path="$1"
     local action="$2"
@@ -69,7 +65,7 @@ journal_sqlite_execute_action() {
     local timestamp
     timestamp=$(date "+%Y-%m-%d %H:%M:%S")
 
-    local state="PENDING"
+    local state="ERROR"
     local exit_code=0
 
     case "$action" in

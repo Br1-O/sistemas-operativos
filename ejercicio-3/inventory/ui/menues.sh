@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+
 source "$(dirname "${BASH_SOURCE[0]}")/../../shared/utils/validations.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/../../shared/utils/helpers.sh"
 
@@ -25,9 +25,9 @@ show_inventory_menu(){
     printf "=============================================================\n"
     printf "                    ${c_bold}MENÚ DE INVENTARIO${c_reset}\n"
     printf "=============================================================\n"
-    printf " 1. Alta producto (ID 0 a %d)\n" $((MAX - 1))
+    printf " 1. Alta producto (ID 0 a %d)\n"
     printf " 2. Baja producto\n"
-    printf " 3. Modificación producto (ID 0 a %d)\n" $((MAX - 1))
+    printf " 3. Modificación producto (ID 0 a %d)\n"
     printf " 4. Mostrar inventario\n"
     printf " 5. Generar archivo HTML\n"
     printf " 6. Buscar producto por nombre\n"
@@ -81,7 +81,7 @@ get_option_from_user_and_execute_inventory_action(){
     local -r -i OPTION_SEARCH_ONE_BY_NAME=6
     local -r -i OPTION_EXIT=7
 
-    local -i action_option=0
+    local action_option=0
     local -n inventory_g_ref=$1    
     local -n inventory_length_g_ref=$2
 
@@ -103,7 +103,7 @@ get_option_from_user_and_execute_inventory_action(){
                 local -i is_repeated=0
                 p_temp=()
 
-                search_products_by_name "${nombre_temp}" p_temp is_repeated
+                search_products_by_name "${nombre_temp}" p_temp is_repeated "$inventory_length_g_ref" inventory_g_ref
 
                 if(( ${is_repeated} > 0 )); then
 
@@ -131,7 +131,7 @@ get_option_from_user_and_execute_inventory_action(){
 
                     clear_screen
 
-                    create_product p_temp
+                    create_product p_temp inventory_g_ref
                 
                     update_array_length_variable_by_ref inventory_g_ref inventory_length_g_ref
 
@@ -144,7 +144,7 @@ get_option_from_user_and_execute_inventory_action(){
                 local -A p_temp_with_index=()
                 quantity_of_p_found=0
 
-                search_products_by_name "$nombre_temp" p_temp_with_index quantity_of_p_found
+                search_products_by_name "$nombre_temp" p_temp_with_index quantity_of_p_found "$inventory_length_g_ref" inventory_g_ref
 
                 if (( quantity_of_p_found > 1 )); then
                     printf "Ese nombre corresponde a más de un producto. No se puede proceder con la petición. \n"
@@ -164,7 +164,7 @@ get_option_from_user_and_execute_inventory_action(){
 
                 clear_screen
 
-                delete_product "${p_temp[id]}" && save_product_action_to_journal "DELETE" p_temp
+                delete_product "${p_temp[id]}" inventory_g_ref && save_product_action_to_journal "DELETE" p_temp
                 ;;
             $OPTION_UPDATE)
 
@@ -173,7 +173,7 @@ get_option_from_user_and_execute_inventory_action(){
                 local -A p_temp_with_index=()
                 quantity_of_p_found=0
 
-                search_products_by_name "$nombre_temp" p_temp_with_index quantity_of_p_found
+                search_products_by_name "$nombre_temp" p_temp_with_index quantity_of_p_found "$inventory_length_g_ref" inventory_g_ref
 
                 if (( quantity_of_p_found > 1 )); then
                     printf "Ese nombre corresponde a más de un producto. No se puede proceder con la petición. \n"
@@ -224,7 +224,7 @@ get_option_from_user_and_execute_inventory_action(){
 
                 clear_screen
 
-                update_product p_temp && save_product_action_to_journal "UPDATE" p_temp
+                update_product p_temp inventory_g_ref && save_product_action_to_journal "UPDATE" p_temp
                 ;;
             $OPTION_SHOW_ALL)
                 show_products_array inventory_g_ref inventory_length
@@ -238,7 +238,7 @@ get_option_from_user_and_execute_inventory_action(){
 
                 ! alpha_field_with_validation "Ingrese Nombre: " nombre_temp && continue
 
-                search_products_by_partial_name "$nombre_temp" products_found products_found_length
+                search_products_by_partial_name "$nombre_temp" products_found products_found_length "$inventory_length_g_ref" inventory_g_ref
 
                 clear_screen
 

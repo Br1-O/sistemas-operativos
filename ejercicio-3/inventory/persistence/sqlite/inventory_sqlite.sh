@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 
 source "$(dirname "${BASH_SOURCE[0]}")/journal_inventory_sqlite.sh"
 

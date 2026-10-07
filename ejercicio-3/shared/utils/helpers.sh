@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 
 clear_screen() {
     # 1. Intenta usar el comando ejecutable nativo del sistema
@@ -34,13 +33,10 @@ update_array_length_variable_by_ref(){
     local -n inventory_length_ref=$2
     local -i new_inventory_length=0
 
-    for((i=0; i<MAX ;i++)); do
-
-        if [[ -n "${inventory_ref[$i,id]}" ]]; then
-            ((new_inventory_length++))
-        fi
-
+    local count=0
+    for key in "${!inventory_ref[@]}"; do
+        [[ "$key" == *",id" ]] && ((count++))
     done
 
-    inventory_length_ref="${new_inventory_length}"
+    inventory_length_ref=$count
 }

@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../shared/utils/validations.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/../../shared/utils/helpers.sh"

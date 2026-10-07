@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+
 source "$(dirname "${BASH_SOURCE[0]}")/../../shared/utils/validations.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/../../shared/utils/helpers.sh"
 
@@ -22,7 +22,7 @@ get_option_from_user_and_execute_login_or_register(){
     local -r -i OPTION_LOGIN=2
     local -r -i OPTION_EXIT=3
 
-    local -i option=0
+    local option=0
 
     while [[ "$option" != "$OPTION_EXIT" ]]; do
         show_auth_menu
