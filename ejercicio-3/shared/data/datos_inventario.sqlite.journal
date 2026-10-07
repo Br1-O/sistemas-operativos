@@ -37,3 +37,7 @@
 2026-10-06 22:53:22	tsv	INSERT	13 asasas verduras 2 3 5 1	DONE
 2026-10-06 22:53:43	tsv	UPDATE	13 espinacas verduras 2 3 5 1	DONE
 2026-10-06 22:54:41	tsv	DELETE	13 espinacas verduras 2 3 5 1	DONE
+2026-10-07 04:17:54	bruno	INSERT	14 tomates frutas 2 200 300 1	DONE
+2026-10-07 05:11:25	bruno	DELETE	8 patatas verduras 2000 3000.0 5000.0 1	DONE
+2026-10-07 05:11:57	bruno	UPDATE	8 patatas verduras 2000 3000.0 5000.0 1	DONE
+2026-10-07 05:12:24	bruno	DELETE	8 patatas verduras 2000 3000.0 5000.0 1	DONE
